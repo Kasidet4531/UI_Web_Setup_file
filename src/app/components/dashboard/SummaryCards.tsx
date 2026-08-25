@@ -97,22 +97,13 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
                 : "hover:border-border-strong hover:shadow-md"
             }`}
           >
-            {/* Top row: Icon & Filter indicator */}
+            {/* Top row: Icon */}
             <div className="flex items-center justify-between mb-3">
               <div
                 className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-transform group-hover:scale-105 ${card.bgIcon}`}
               >
                 {card.icon}
               </div>
-              {isActive ? (
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-light px-2 py-0.5 rounded-full border border-accent/20">
-                  <CheckCircle2 size={11} /> Filter Active
-                </span>
-              ) : (
-                <span className="text-[11px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                  <Filter size={11} /> Filter
-                </span>
-              )}
             </div>
 
             {/* Metric Number */}
