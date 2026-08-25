@@ -85,24 +85,25 @@ export function RequestsListPage({ onNavigate }: RequestsListPageProps) {
       {/* Filter and Table Panel */}
       <div className="glass-panel overflow-hidden">
         {/* Search & Filter Controls */}
-        <div className="p-4 border-b border-border bg-card space-y-3">
+        <div className="p-3.5 sm:p-4 border-b border-border bg-card">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div className="relative flex-1">
               <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
               />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by Request No, Title, Probecard..."
-                className="input-base pl-9 pr-8"
+                className="input-base input-with-icon input-with-clear text-xs sm:text-sm h-10 shadow-2xs"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
+                  title="Clear search"
                 >
                   <X size={14} />
                 </button>
@@ -112,7 +113,7 @@ export function RequestsListPage({ onNavigate }: RequestsListPageProps) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as RequestStatus | "")}
-              className="input-base sm:w-40 text-xs"
+              className="input-base sm:w-44 text-xs h-10 cursor-pointer shadow-2xs"
             >
               <option value="">All Statuses</option>
               {statuses.map((s) => (
@@ -125,7 +126,7 @@ export function RequestsListPage({ onNavigate }: RequestsListPageProps) {
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="input-base sm:w-36 text-xs"
+              className="input-base sm:w-36 text-xs h-10 cursor-pointer shadow-2xs"
             >
               <option value="">All Depts</option>
               <option value="GNTC">GNTC</option>

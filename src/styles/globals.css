@@ -28,7 +28,8 @@
 
 .input-base {
   width: 100%;
-  padding: 8px 12px;
+  padding-block: 8px;
+  padding-inline: 12px;
   background-color: var(--input-background);
   color: var(--foreground);
   border: 1px solid var(--input-border);
@@ -37,6 +38,14 @@
   line-height: 1.5;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   outline: none;
+}
+
+.input-with-icon {
+  padding-left: 38px !important;
+}
+
+.input-with-clear {
+  padding-right: 32px !important;
 }
 
 .input-base:focus {

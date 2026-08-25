@@ -147,25 +147,26 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {/* Main Table Section */}
       <div className="glass-panel overflow-hidden">
         {/* Search & Filter Bar */}
-        <div className="p-4 border-b border-border bg-card space-y-3">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+        <div className="p-3.5 sm:p-4 border-b border-border bg-card">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
             {/* Search Input */}
             <div className="relative flex-1">
               <Search
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
               />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by Request No, Title, Probecard, PSF File..."
-                className="input-base pl-9 pr-8"
+                placeholder="Search request no, title, probecard, PSF file..."
+                className="input-base input-with-icon input-with-clear text-xs sm:text-sm h-10 shadow-2xs"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
+                  title="Clear search"
                 >
                   <X size={14} />
                 </button>
@@ -173,12 +174,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
 
             {/* Dropdown Filters */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
               {/* Product Type */}
               <select
                 value={productTypeFilter}
                 onChange={(e) => setProductTypeFilter(e.target.value)}
-                className="input-base text-xs sm:w-40"
+                className="input-base text-xs h-10 min-w-[155px] cursor-pointer shadow-2xs"
               >
                 <option value="">All Product Types</option>
                 <option value="New Product">New Product</option>
@@ -190,7 +191,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <select
                 value={setupOwnerRoleFilter}
                 onChange={(e) => setSetupOwnerRoleFilter(e.target.value)}
-                className="input-base text-xs sm:w-36"
+                className="input-base text-xs h-10 min-w-[115px] cursor-pointer shadow-2xs"
               >
                 <option value="">All Depts</option>
                 <option value="GNTC">GNTC</option>
@@ -201,7 +202,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="input-base text-xs sm:w-32"
+                className="input-base text-xs h-10 min-w-[115px] cursor-pointer shadow-2xs"
               >
                 <option value="">All Priority</option>
                 <option value="Critical">Critical</option>
@@ -215,10 +216,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <button
                   type="button"
                   onClick={handleClearAllFilters}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                  className="h-10 px-3 rounded-lg border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-2xs"
                   title="Reset all filters"
                 >
-                  <RefreshCw size={14} />
+                  <RefreshCw size={13} />
+                  <span className="hidden sm:inline">Reset</span>
                 </button>
               )}
             </div>
