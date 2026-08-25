@@ -57,9 +57,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
               PSF Request Portal
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto mt-0.5">
-              Probecard Setup File Request, Recipe Lifecycle & Workflow System
-            </p>
           </div>
         </div>
 
