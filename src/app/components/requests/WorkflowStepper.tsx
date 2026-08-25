@@ -84,14 +84,11 @@ export function WorkflowStepper({
 
   return (
     <div className="glass-panel p-4 sm:p-5 mb-6 space-y-4 bg-card border border-border">
-      {/* Header bar with stage counter and exception badges */}
+      {/* Header bar with exception badges (Stage X of 4 removed) */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Request Lifecycle & Progression
-          </span>
-          <span className="text-[11px] font-mono-code bg-secondary text-foreground px-2 py-0.5 rounded-md border border-border font-semibold">
-            Stage {Math.min(activeStageIdx + 1, 4)} of 4
           </span>
         </div>
 
@@ -148,10 +145,11 @@ export function WorkflowStepper({
               badgeStyle = "bg-purple-600 text-white border-purple-700";
               iconColor = "text-purple-600 dark:text-purple-400";
             } else {
+              // Yellow-Orange theme for Current step
               cardStyle =
-                "bg-accent-light/50 border-accent text-foreground shadow-xs ring-1 ring-accent/30";
-              badgeStyle = "bg-accent text-white border-accent shadow-xs";
-              iconColor = "text-accent";
+                "bg-amber-50/70 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600 text-foreground shadow-xs ring-1 ring-amber-400/30";
+              badgeStyle = "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500 shadow-xs";
+              iconColor = "text-amber-600 dark:text-amber-400";
             }
           }
 
@@ -182,12 +180,12 @@ export function WorkflowStepper({
                     {stage.title}
                   </div>
                   {isCurrent && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-accent text-white shrink-0">
-                      Active
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0 shadow-2xs">
+                      Current
                     </span>
                   )}
                   {isCompleted && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
                       Done
                     </span>
                   )}
