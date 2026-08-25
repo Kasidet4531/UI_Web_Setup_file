@@ -46,7 +46,7 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
       count: counts.myOpen,
       icon: <FileText size={20} className="text-blue-600 dark:text-blue-400" />,
       bgIcon: "bg-blue-50 dark:bg-blue-950/60 border-blue-100 dark:border-blue-900/50",
-      activeOutline: "border-2 border-blue-500 dark:border-blue-400 shadow-xs",
+      color: "#2563eb",
       countColor: "text-blue-600 dark:text-blue-400",
     },
     {
@@ -56,7 +56,7 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
       count: counts.submitted,
       icon: <Clock size={20} className="text-amber-600 dark:text-amber-400" />,
       bgIcon: "bg-amber-50 dark:bg-amber-950/60 border-amber-100 dark:border-amber-900/50",
-      activeOutline: "border-2 border-amber-500 dark:border-amber-400 shadow-xs",
+      color: "#d97706",
       countColor: "text-amber-600 dark:text-amber-400",
     },
     {
@@ -66,7 +66,7 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
       count: counts.inProgress,
       icon: <Wrench size={20} className="text-indigo-600 dark:text-indigo-400" />,
       bgIcon: "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-900/50",
-      activeOutline: "border-2 border-indigo-500 dark:border-indigo-400 shadow-xs",
+      color: "#4f46e5",
       countColor: "text-indigo-600 dark:text-indigo-400",
     },
     {
@@ -76,7 +76,7 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
       count: counts.overdue,
       icon: <AlertTriangle size={20} className="text-rose-600 dark:text-rose-400" />,
       bgIcon: "bg-rose-50 dark:bg-rose-950/60 border-rose-100 dark:border-rose-900/50",
-      activeOutline: "border-2 border-rose-500 dark:border-rose-400 shadow-xs",
+      color: "#e11d48",
       countColor: "text-rose-600 dark:text-rose-400",
     },
   ];
@@ -89,10 +89,20 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
         return (
           <button
             key={card.key}
+            type="button"
             onClick={() => onFilter(isActive ? null : card.key)}
-            className={`glass-panel p-4 text-left transition-all duration-150 relative cursor-pointer bg-card ${
+            style={
               isActive
-                ? `${card.activeOutline}`
+                ? {
+                    borderColor: card.color,
+                    borderWidth: "2px",
+                    boxShadow: `0 0 0 1px ${card.color}, 0 4px 12px -2px ${card.color}25`,
+                  }
+                : undefined
+            }
+            className={`p-4 text-left rounded-2xl transition-all duration-150 relative cursor-pointer bg-card border ${
+              isActive
+                ? "z-10"
                 : "border-border hover:border-border-strong hover:shadow-xs"
             }`}
           >
