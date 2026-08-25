@@ -46,8 +46,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       <div className="w-full max-w-lg space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex px-4 py-2 rounded-2xl bg-white shadow-md border border-border mx-auto">
-            <img src={nxpLogo} alt="NXP Semiconductors" className="h-10 w-auto object-contain" />
+          <div className="inline-flex px-6 py-3 rounded-2xl bg-white shadow-lg border border-border mx-auto">
+            <img src={nxpLogo} alt="NXP Semiconductors" className="h-14 sm:h-16 w-auto object-contain" />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
