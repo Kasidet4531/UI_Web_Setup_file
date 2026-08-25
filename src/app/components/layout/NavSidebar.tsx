@@ -39,12 +39,9 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
   return (
     <aside className="flex flex-col h-full bg-sidebar text-sidebar-foreground select-none">
       {/* Brand Header */}
-      <div className="p-4 border-b border-sidebar-border space-y-2.5">
-        <div className="flex items-center justify-between">
+      <div className="p-4 border-b border-sidebar-border space-y-2">
+        <div>
           <img src={nxpLogo} alt="NXP Semiconductors" className="h-10 w-auto object-contain" />
-          <span className="text-[10px] font-bold bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full border border-sky-500/30">
-            v2.0
-          </span>
         </div>
         <div>
           <div className="font-bold text-sm tracking-tight text-white">
@@ -221,14 +218,6 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
             </nav>
           </div>
         )}
-      </div>
-
-      {/* Bottom info footer */}
-      <div className="p-3 border-t border-sidebar-border bg-sidebar/50">
-        <div className="text-[11px] text-sidebar-muted flex items-center justify-between px-1">
-          <span>Schema v2.0 Active</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500" title="Connected & Live" />
-        </div>
       </div>
     </aside>
   );
