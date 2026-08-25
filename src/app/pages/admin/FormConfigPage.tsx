@@ -3,15 +3,13 @@ import { useApp } from "../../context/AppContext";
 import {
   ACTIVE_SCHEMA,
   FormSchema,
-  SectionDef,
   FieldDef,
 } from "../../mock/mockFormSchema";
 import {
   Plus,
   Edit2,
   Trash2,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
   Eye,
   Sliders,
   Code,
@@ -20,10 +18,6 @@ import {
   RotateCcw,
   CheckCircle2,
   X,
-  Layers,
-  HelpCircle,
-  Sparkles,
-  Check,
 } from "lucide-react";
 
 type TabMode = "builder" | "preview" | "json";
@@ -58,6 +52,20 @@ export function FormConfigPage() {
   const [jsonText, setJsonText] = useState(() => JSON.stringify(schema, null, 2));
   const [jsonError, setJsonError] = useState("");
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Drag & Drop State for Fields
+  const [draggedField, setDraggedField] = useState<{
+    sectionIdx: number;
+    fieldIdx: number;
+  } | null>(null);
+  const [dragOverField, setDragOverField] = useState<{
+    sectionIdx: number;
+    fieldIdx: number;
+  } | null>(null);
+
+  // Drag & Drop State for Sections
+  const [draggedSection, setDraggedSection] = useState<number | null>(null);
+  const [dragOverSection, setDragOverSection] = useState<number | null>(null);
 
   // Field Edit / Add Modal State
   const [fieldModal, setFieldModal] = useState<FieldModalState>({
@@ -132,6 +140,90 @@ export function FormConfigPage() {
     }
   };
 
+  // ─── Drag & Drop Handlers for Fields ────────────────────────────────────────
+  const handleFieldDragStart = (
+    e: React.DragEvent,
+    sectionIdx: number,
+    fieldIdx: number
+  ) => {
+    e.dataTransfer.setData("text/plain", "");
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedField({ sectionIdx, fieldIdx });
+  };
+
+  const handleFieldDragOver = (
+    e: React.DragEvent,
+    sectionIdx: number,
+    fieldIdx: number
+  ) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (
+      dragOverField?.sectionIdx !== sectionIdx ||
+      dragOverField?.fieldIdx !== fieldIdx
+    ) {
+      setDragOverField({ sectionIdx, fieldIdx });
+    }
+  };
+
+  const handleFieldDrop = (
+    e: React.DragEvent,
+    targetSectionIdx: number,
+    targetFieldIdx: number
+  ) => {
+    e.preventDefault();
+    if (!draggedField) return;
+
+    const { sectionIdx: srcSecIdx, fieldIdx: srcFieldIdx } = draggedField;
+
+    // If dropped on the same position, do nothing
+    if (srcSecIdx === targetSectionIdx && srcFieldIdx === targetFieldIdx) {
+      setDraggedField(null);
+      setDragOverField(null);
+      return;
+    }
+
+    const newSections = JSON.parse(JSON.stringify(schema.sections));
+    const [movedItem] = newSections[srcSecIdx].fields.splice(srcFieldIdx, 1);
+    newSections[targetSectionIdx].fields.splice(targetFieldIdx, 0, movedItem);
+
+    handleSchemaUpdate({ ...schema, sections: newSections });
+    setDraggedField(null);
+    setDragOverField(null);
+  };
+
+  // ─── Drag & Drop Handlers for Sections ──────────────────────────────────────
+  const handleSectionDragStart = (e: React.DragEvent, sectionIdx: number) => {
+    e.dataTransfer.setData("text/plain", "");
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedSection(sectionIdx);
+  };
+
+  const handleSectionDragOver = (e: React.DragEvent, sectionIdx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverSection !== sectionIdx) {
+      setDragOverSection(sectionIdx);
+    }
+  };
+
+  const handleSectionDrop = (e: React.DragEvent, targetSectionIdx: number) => {
+    e.preventDefault();
+    if (draggedSection === null || draggedSection === targetSectionIdx) {
+      setDraggedSection(null);
+      setDragOverSection(null);
+      return;
+    }
+
+    const newSections = JSON.parse(JSON.stringify(schema.sections));
+    const [movedSection] = newSections.splice(draggedSection, 1);
+    newSections.splice(targetSectionIdx, 0, movedSection);
+
+    handleSchemaUpdate({ ...schema, sections: newSections });
+    setDraggedSection(null);
+    setDragOverSection(null);
+  };
+
   // ─── Field CRUD Handlers ────────────────────────────────────────────────────
   const openAddField = (sectionIdx: number) => {
     setFieldModal({
@@ -197,19 +289,6 @@ export function FormConfigPage() {
     }
   };
 
-  const handleMoveField = (sectionIdx: number, fieldIdx: number, direction: "up" | "down") => {
-    const newSections = [...schema.sections];
-    const fields = newSections[sectionIdx].fields;
-    const targetIdx = direction === "up" ? fieldIdx - 1 : fieldIdx + 1;
-    if (targetIdx < 0 || targetIdx >= fields.length) return;
-
-    const temp = fields[fieldIdx];
-    fields[fieldIdx] = fields[targetIdx];
-    fields[targetIdx] = temp;
-
-    handleSchemaUpdate({ ...schema, sections: newSections });
-  };
-
   // ─── Section CRUD Handlers ──────────────────────────────────────────────────
   const openAddSection = () => {
     setSectionModal({
@@ -271,7 +350,7 @@ export function FormConfigPage() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Customize form categories, input parameters, required validations, and dropdown options
+            Customize form categories, input parameters, required validations, and dropdown options with Drag & Drop
           </p>
         </div>
 
@@ -323,7 +402,7 @@ export function FormConfigPage() {
           }`}
         >
           <Sliders size={14} className="text-accent" />
-          <span>Visual Form Builder</span>
+          <span>Visual Form Builder (Drag & Drop)</span>
         </button>
 
         <button
@@ -352,136 +431,186 @@ export function FormConfigPage() {
       </div>
 
       {/* ────────────────────────────────────────────────────────────────────── */}
-      {/* TAB 1: VISUAL FORM BUILDER                                            */}
+      {/* TAB 1: VISUAL FORM BUILDER (DRAG & DROP)                              */}
       {/* ────────────────────────────────────────────────────────────────────── */}
       {activeTab === "builder" && (
         <div className="space-y-6">
-          {schema.sections.map((section, sIdx) => (
-            <div key={section.sectionKey || sIdx} className="glass-panel p-5 bg-card space-y-4">
-              {/* Section Header */}
-              <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
-                    {sIdx + 1}
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-foreground">{section.title}</h2>
-                    <span className="text-[11px] font-mono-code text-muted-foreground">
-                      section_key: {section.sectionKey} · {section.fields.length} fields
-                    </span>
-                  </div>
-                </div>
+          {schema.sections.map((section, sIdx) => {
+            const isSectionDragged = draggedSection === sIdx;
+            const isSectionDragOver = dragOverSection === sIdx && !isSectionDragged;
 
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => openEditSection(sIdx)}
-                    className="btn-ghost text-xs p-1.5 text-muted-foreground hover:text-foreground"
-                    title="Edit Section Name"
-                  >
-                    <Edit2 size={13} />
-                  </button>
-                  {schema.sections.length > 1 && (
-                    <button
-                      onClick={() => handleDeleteSection(sIdx)}
-                      className="btn-ghost text-xs p-1.5 text-rose-500 hover:text-rose-700"
-                      title="Delete Section"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Section Fields List */}
-              {section.fields.length === 0 ? (
-                <div className="text-center py-6 border border-dashed border-border rounded-xl text-xs text-muted-foreground">
-                  No fields in this section yet. Click "+ Add Field" below.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {section.fields.map((field, fIdx) => (
-                    <div
-                      key={field.fieldKey || fIdx}
-                      className="p-3.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 transition-all flex items-start justify-between gap-3 group"
-                    >
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {field.label}
-                          </span>
-                          {field.required && (
-                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-1.5 py-0.2 rounded">
-                              Required *
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <span className="font-mono-code bg-card px-1.5 py-0.5 rounded border border-border/80 uppercase text-[10px] font-semibold text-accent">
-                            {field.type}
-                          </span>
-                          {field.options && field.options.length > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              ({field.options.length} options)
-                            </span>
-                          )}
-                          {field.placeholder && (
-                            <span className="text-[10px] truncate max-w-[120px] text-muted-foreground italic">
-                              "{field.placeholder}"
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Field Action Buttons */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleMoveField(sIdx, fIdx, "up")}
-                          disabled={fIdx === 0}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                          title="Move Up"
-                        >
-                          <ChevronUp size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleMoveField(sIdx, fIdx, "down")}
-                          disabled={fIdx === section.fields.length - 1}
-                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                          title="Move Down"
-                        >
-                          <ChevronDown size={14} />
-                        </button>
-                        <button
-                          onClick={() => openEditField(sIdx, fIdx)}
-                          className="p-1 rounded text-accent hover:text-accent-hover"
-                          title="Edit Field"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteField(sIdx, fIdx)}
-                          className="p-1 rounded text-rose-500 hover:text-rose-700"
-                          title="Delete Field"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Field Button */}
-              <button
-                type="button"
-                onClick={() => openAddField(sIdx)}
-                className="w-full py-2.5 border border-dashed border-accent/40 rounded-xl text-xs font-semibold text-accent hover:bg-accent-light/50 transition-all flex items-center justify-center gap-1.5"
+            return (
+              <div
+                key={section.sectionKey || sIdx}
+                onDragOver={(e) => handleSectionDragOver(e, sIdx)}
+                onDrop={(e) => handleSectionDrop(e, sIdx)}
+                className={`glass-panel p-5 bg-card space-y-4 transition-all ${
+                  isSectionDragOver
+                    ? "ring-2 ring-accent border-accent shadow-md bg-accent/5"
+                    : "border-border"
+                } ${isSectionDragged ? "opacity-40 border-dashed" : ""}`}
               >
-                <Plus size={14} />
-                <span>Add Field to {section.title}</span>
-              </button>
-            </div>
-          ))}
+                {/* Section Header with Drag Handle */}
+                <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      draggable={true}
+                      onDragStart={(e) => handleSectionDragStart(e, sIdx)}
+                      onDragEnd={() => {
+                        setDraggedSection(null);
+                        setDragOverSection(null);
+                      }}
+                      className="cursor-grab active:cursor-grabbing p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                      title="Drag to reorder section"
+                    >
+                      <GripVertical size={16} />
+                    </div>
+
+                    <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold text-xs shrink-0">
+                      {sIdx + 1}
+                    </div>
+
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-bold text-foreground truncate">
+                        {section.title}
+                      </h2>
+                      <span className="text-[11px] font-mono-code text-muted-foreground">
+                        section_key: {section.sectionKey} · {section.fields.length} fields
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEditSection(sIdx)}
+                      className="btn-ghost text-xs p-1.5 text-muted-foreground hover:text-foreground"
+                      title="Edit Section Name"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    {schema.sections.length > 1 && (
+                      <button
+                        onClick={() => handleDeleteSection(sIdx)}
+                        className="btn-ghost text-xs p-1.5 text-rose-500 hover:text-rose-700"
+                        title="Delete Section"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section Fields List (Drag & Drop) */}
+                {section.fields.length === 0 ? (
+                  <div className="text-center py-6 border border-dashed border-border rounded-xl text-xs text-muted-foreground">
+                    No fields in this section yet. Click "+ Add Field" below.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {section.fields.map((field, fIdx) => {
+                      const isFieldDragged =
+                        draggedField?.sectionIdx === sIdx &&
+                        draggedField?.fieldIdx === fIdx;
+                      const isFieldDragOver =
+                        dragOverField?.sectionIdx === sIdx &&
+                        dragOverField?.fieldIdx === fIdx &&
+                        !isFieldDragged;
+
+                      return (
+                        <div
+                          key={field.fieldKey || fIdx}
+                          draggable={true}
+                          onDragStart={(e) => handleFieldDragStart(e, sIdx, fIdx)}
+                          onDragOver={(e) => handleFieldDragOver(e, sIdx, fIdx)}
+                          onDrop={(e) => handleFieldDrop(e, sIdx, fIdx)}
+                          onDragEnd={() => {
+                            setDraggedField(null);
+                            setDragOverField(null);
+                          }}
+                          className={`p-3.5 rounded-xl border transition-all flex items-start justify-between gap-3 group cursor-grab active:cursor-grabbing select-none ${
+                            isFieldDragOver
+                              ? "ring-2 ring-accent border-accent bg-accent/10 shadow-sm"
+                              : "border-border bg-secondary/30 hover:bg-secondary/60 hover:border-accent/40"
+                          } ${
+                            isFieldDragged ? "opacity-30 border-dashed scale-98" : ""
+                          }`}
+                        >
+                          {/* Grip Handle + Field Info */}
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <div className="text-muted-foreground group-hover:text-accent pt-0.5 shrink-0">
+                              <GripVertical size={15} />
+                            </div>
+
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-foreground truncate">
+                                  {field.label}
+                                </span>
+                                {field.required && (
+                                  <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-1.5 py-0.2 rounded">
+                                    Required *
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <span className="font-mono-code bg-card px-1.5 py-0.5 rounded border border-border/80 uppercase text-[10px] font-semibold text-accent">
+                                  {field.type}
+                                </span>
+                                {field.options && field.options.length > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    ({field.options.length} options)
+                                  </span>
+                                )}
+                                {field.placeholder && (
+                                  <span className="text-[10px] truncate max-w-[120px] text-muted-foreground italic">
+                                    "{field.placeholder}"
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div
+                            className="flex items-center gap-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => openEditField(sIdx, fIdx)}
+                              className="p-1 rounded text-accent hover:text-accent-hover hover:bg-accent/10"
+                              title="Edit Field"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteField(sIdx, fIdx)}
+                              className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-500/10"
+                              title="Delete Field"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Add Field Button */}
+                <button
+                  type="button"
+                  onClick={() => openAddField(sIdx)}
+                  className="w-full py-2.5 border border-dashed border-accent/40 rounded-xl text-xs font-semibold text-accent hover:bg-accent-light/50 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  <span>Add Field to {section.title}</span>
+                </button>
+              </div>
+            );
+          })}
 
           {/* Add New Section Button */}
           <button
