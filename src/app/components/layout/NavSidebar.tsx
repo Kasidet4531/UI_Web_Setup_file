@@ -39,21 +39,19 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
   return (
     <aside className="flex flex-col h-full bg-sidebar text-sidebar-foreground select-none">
       {/* Brand Header */}
-      <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="h-11 px-2.5 py-1 rounded-xl bg-white flex items-center justify-center shadow-md border border-white/20 shrink-0">
-            <img src={nxpLogo} alt="NXP Semiconductors" className="h-7 w-auto object-contain" />
+      <div className="p-4 border-b border-sidebar-border space-y-2.5">
+        <div className="flex items-center justify-between">
+          <img src={nxpLogo} alt="NXP Semiconductors" className="h-10 w-auto object-contain" />
+          <span className="text-[10px] font-bold bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded-full border border-sky-500/30">
+            v2.0
+          </span>
+        </div>
+        <div>
+          <div className="font-bold text-sm tracking-tight text-white">
+            PSF Request Portal
           </div>
-          <div className="min-w-0">
-            <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
-              <span className="truncate">PSF Portal</span>
-              <span className="text-[10px] font-semibold bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded border border-sky-500/30">
-                v2.0
-              </span>
-            </div>
-            <div className="text-[11px] text-sidebar-muted font-normal truncate">
-              Setup File Management
-            </div>
+          <div className="text-[11px] text-sidebar-muted font-normal">
+            Setup File Management
           </div>
         </div>
       </div>

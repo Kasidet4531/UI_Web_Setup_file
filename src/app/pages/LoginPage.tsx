@@ -45,10 +45,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 sm:p-6 transition-colors">
       <div className="w-full max-w-lg space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex px-6 py-3 rounded-2xl bg-white shadow-lg border border-border mx-auto">
-            <img src={nxpLogo} alt="NXP Semiconductors" className="h-14 sm:h-16 w-auto object-contain" />
-          </div>
+        <div className="text-center space-y-4">
+          <img
+            src={nxpLogo}
+            alt="NXP Semiconductors"
+            className="h-20 sm:h-24 w-auto object-contain mx-auto"
+          />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
               PSF Request Portal
