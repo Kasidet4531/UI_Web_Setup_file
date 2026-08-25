@@ -115,11 +115,6 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
             PSF Request Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            {currentUser?.role === "requester"
-              ? "Manage and track your probecard setup requests in real-time"
-              : `Overview of setup requests across teams · ${visibleRequests.length} active matching`}
-          </p>
         </div>
 
         {/* Action Buttons */}
@@ -214,69 +209,20 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
               </select>
+
+              {/* Reset filter button if any filter is active */}
+              {(productTypeFilter || setupOwnerRoleFilter || priorityFilter || search || cardFilter) && (
+                <button
+                  type="button"
+                  onClick={handleClearAllFilters}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shrink-0"
+                  title="Reset all filters"
+                >
+                  <RefreshCw size={14} />
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Active Filter Tags */}
-          {hasActiveFilters && (
-            <div className="flex items-center gap-2 flex-wrap pt-1 text-xs">
-              <span className="text-muted-foreground text-[11px] font-medium flex items-center gap-1">
-                <SlidersHorizontal size={12} /> Active Filters:
-              </span>
-
-              {cardFilter && (
-                <span className="inline-flex items-center gap-1 bg-accent-light text-accent border border-accent/20 px-2 py-0.5 rounded-md font-medium text-[11px]">
-                  Card: {cardFilter.replace(/_/g, " ")}
-                  <button onClick={() => setCardFilter(null)} className="hover:opacity-75">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              {productTypeFilter && (
-                <span className="inline-flex items-center gap-1 bg-secondary text-foreground border border-border px-2 py-0.5 rounded-md text-[11px]">
-                  Product: {productTypeFilter}
-                  <button onClick={() => setProductTypeFilter("")} className="hover:opacity-75">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              {setupOwnerRoleFilter && (
-                <span className="inline-flex items-center gap-1 bg-secondary text-foreground border border-border px-2 py-0.5 rounded-md text-[11px]">
-                  Dept: {setupOwnerRoleFilter}
-                  <button onClick={() => setSetupOwnerRoleFilter("")} className="hover:opacity-75">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              {priorityFilter && (
-                <span className="inline-flex items-center gap-1 bg-secondary text-foreground border border-border px-2 py-0.5 rounded-md text-[11px]">
-                  Priority: {priorityFilter}
-                  <button onClick={() => setPriorityFilter("")} className="hover:opacity-75">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              {search && (
-                <span className="inline-flex items-center gap-1 bg-secondary text-foreground border border-border px-2 py-0.5 rounded-md text-[11px]">
-                  Search: "{search}"
-                  <button onClick={() => setSearch("")} className="hover:opacity-75">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-
-              <button
-                onClick={handleClearAllFilters}
-                className="text-accent hover:underline text-[11px] font-semibold ml-auto flex items-center gap-1"
-              >
-                <RefreshCw size={11} /> Reset all
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Requests Table */}
