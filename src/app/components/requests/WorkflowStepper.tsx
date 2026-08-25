@@ -17,13 +17,6 @@ interface WorkflowStepperProps {
   completedAt?: string | null;
 }
 
-interface StepItem {
-  key: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
 export function WorkflowStepper({
   status,
   submittedAt,
@@ -34,35 +27,40 @@ export function WorkflowStepper({
   const isCancelled = status === "CANCELLED";
   const isNeedInfo = status === "NEED_MORE_INFO";
 
-  const STEPS: StepItem[] = [
+  // Define the standard linear stages
+  const STAGES = [
     {
-      key: "DRAFT",
-      title: "Draft Created",
-      description: "Requester filling specifications",
-      icon: <FileEdit size={16} />,
+      id: "DRAFT",
+      stepNum: 1,
+      title: "1. Draft Request",
+      subtitle: "Requester filling specs",
+      icon: FileEdit,
     },
     {
-      key: "SUBMITTED",
-      title: "Submitted",
-      description: submittedAt ? "Waiting for setup owner" : "Awaiting submission",
-      icon: <Clock size={16} />,
+      id: "SUBMITTED",
+      stepNum: 2,
+      title: "2. Submitted",
+      subtitle: submittedAt ? `Sub: ${new Date(submittedAt).toLocaleDateString()}` : "Awaiting Assignment",
+      icon: Clock,
     },
     {
-      key: "SETUP_IN_PROGRESS",
-      title: "Setup In Progress",
-      description: psfCreatedAt ? "PSF parameters created" : "Setup owner configuring recipe",
-      icon: <Wrench size={16} />,
+      id: "SETUP_IN_PROGRESS",
+      stepNum: 3,
+      title: "3. PSF Setup",
+      subtitle: psfCreatedAt ? "Parameters Created" : "Recipe in Progress",
+      icon: Wrench,
     },
     {
-      key: "COMPLETED",
-      title: "Completed",
-      description: completedAt ? "Verified and ready for test" : "Final verification & signoff",
-      icon: <CheckCircle2 size={16} />,
+      id: "COMPLETED",
+      stepNum: 4,
+      title: "4. Completed",
+      subtitle: completedAt ? `Done: ${new Date(completedAt).toLocaleDateString()}` : "Signoff & Verified",
+      icon: CheckCircle2,
     },
   ];
 
-  // Map status to active index (0 to 3)
-  const getActiveStepIndex = (st: string) => {
+  // Determine stage progression level (0 to 3)
+  const getStageIndex = (st: string) => {
     switch (st) {
       case "DRAFT":
         return 0;
@@ -74,90 +72,130 @@ export function WorkflowStepper({
         return 2;
       case "COMPLETED":
         return 3;
-      default:
+      case "REJECTED":
+      case "CANCELLED":
         return 1;
+      default:
+        return 0;
     }
   };
 
-  const currentStepIdx = getActiveStepIndex(status);
+  const activeStageIdx = getStageIndex(status);
 
   return (
-    <div className="glass-panel p-4 sm:p-5 mb-6">
-      {/* Header with exception banner if rejected/cancelled */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-          <span>Request Lifecycle & Progression</span>
+    <div className="glass-panel p-4 sm:p-5 mb-6 space-y-4 bg-card border border-border">
+      {/* Header bar with stage counter and exception badges */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Request Lifecycle & Progression
+          </span>
+          <span className="text-[11px] font-mono-code bg-secondary text-foreground px-2 py-0.5 rounded-md border border-border font-semibold">
+            Stage {Math.min(activeStageIdx + 1, 4)} of 4
+          </span>
         </div>
 
+        {/* Exception State Badges */}
         {isRejected && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-full">
-            <XCircle size={13} /> Request Rejected
-          </span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-3 py-1 rounded-full">
+            <XCircle size={14} className="shrink-0" />
+            <span>Workflow Halted: Request Rejected</span>
+          </div>
         )}
 
         {isCancelled && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-full">
-            <AlertCircle size={13} /> Request Cancelled
-          </span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-1 rounded-full">
+            <AlertCircle size={14} className="shrink-0" />
+            <span>Workflow Cancelled</span>
+          </div>
         )}
 
         {isNeedInfo && (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-2.5 py-1 rounded-full animate-pulse">
-            <HelpCircle size={13} /> Action Needed: Requester Input
-          </span>
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-3 py-1 rounded-full animate-pulse">
+            <HelpCircle size={14} className="shrink-0" />
+            <span>Action Required: More Info Requested</span>
+          </div>
         )}
       </div>
 
-      {/* Progress Timeline Bar */}
-      <div className="relative grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-2">
-        {STEPS.map((step, idx) => {
-          const isDone = idx < currentStepIdx || status === "COMPLETED";
-          const isCurrent = idx === currentStepIdx && !isDone;
-          const isFuture = idx > currentStepIdx;
+      {/* Stepper Pipeline Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {STAGES.map((stage, idx) => {
+          const isCompleted = idx < activeStageIdx || status === "COMPLETED";
+          const isCurrent = idx === activeStageIdx && status !== "COMPLETED";
 
-          let circleBg = "bg-secondary text-muted-foreground border-border";
-          let textColor = "text-muted-foreground";
+          const IconComponent = stage.icon;
 
-          if (isDone) {
-            circleBg = "bg-emerald-500 text-white border-emerald-600 shadow-sm shadow-emerald-500/20";
-            textColor = "text-foreground font-semibold";
+          let cardStyle = "bg-secondary/40 border-border/70 text-muted-foreground";
+          let badgeStyle = "bg-muted text-muted-foreground border-border";
+          let iconColor = "text-muted-foreground";
+
+          if (isCompleted) {
+            cardStyle =
+              "bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-foreground";
+            badgeStyle =
+              "bg-emerald-500 text-white border-emerald-600 shadow-xs";
+            iconColor = "text-emerald-600 dark:text-emerald-400";
           } else if (isCurrent) {
-            circleBg =
-              isRejected || isCancelled
-                ? "bg-rose-500 text-white border-rose-600 shadow-sm"
-                : isNeedInfo
-                ? "bg-purple-600 text-white border-purple-700 shadow-sm animate-pulse"
-                : "bg-accent text-white border-accent shadow-md shadow-accent/30 ring-4 ring-accent/20";
-            textColor = "text-accent font-bold";
+            if (isRejected || isCancelled) {
+              cardStyle =
+                "bg-rose-50/60 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 text-foreground ring-1 ring-rose-400/30";
+              badgeStyle = "bg-rose-500 text-white border-rose-600";
+              iconColor = "text-rose-600 dark:text-rose-400";
+            } else if (isNeedInfo) {
+              cardStyle =
+                "bg-purple-50/60 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 text-foreground ring-1 ring-purple-400/30";
+              badgeStyle = "bg-purple-600 text-white border-purple-700";
+              iconColor = "text-purple-600 dark:text-purple-400";
+            } else {
+              cardStyle =
+                "bg-accent-light/50 border-accent text-foreground shadow-xs ring-1 ring-accent/30";
+              badgeStyle = "bg-accent text-white border-accent shadow-xs";
+              iconColor = "text-accent";
+            }
           }
 
           return (
-            <div key={step.key} className="relative flex sm:flex-col items-start gap-3 sm:gap-2">
-              {/* Connector line on desktop */}
-              {idx < STEPS.length - 1 && (
-                <div
-                  className={`hidden sm:block absolute top-4 left-1/2 w-full h-[2px] -z-0 transition-colors ${
-                    idx < currentStepIdx ? "bg-emerald-500" : "bg-border"
-                  }`}
-                />
-              )}
-
-              {/* Step Circle */}
-              <div className="flex items-center gap-3 sm:block z-10">
-                <div
-                  className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs transition-all ${circleBg}`}
-                >
-                  {isDone ? <Check size={14} className="stroke-[2.5]" /> : step.icon}
-                </div>
+            <div
+              key={stage.id}
+              className={`p-3 rounded-xl border transition-all flex items-start gap-3 relative overflow-hidden ${cardStyle}`}
+            >
+              {/* Left Stage Icon / Number Badge */}
+              <div
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 border ${badgeStyle}`}
+              >
+                {isCompleted ? (
+                  <Check size={14} className="stroke-[3]" />
+                ) : isCurrent && (isRejected || isCancelled) ? (
+                  <XCircle size={14} />
+                ) : isCurrent && isNeedInfo ? (
+                  <HelpCircle size={14} />
+                ) : (
+                  <span>{stage.stepNum}</span>
+                )}
               </div>
 
-              {/* Step Info */}
-              <div className="flex-1">
-                <div className={`text-xs ${textColor}`}>
-                  {step.title}
+              {/* Stage Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="text-xs font-bold truncate text-foreground">
+                    {stage.title}
+                  </div>
+                  {isCurrent && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-accent text-white shrink-0">
+                      Active
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
+                      Done
+                    </span>
+                  )}
                 </div>
-                <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
-                  {step.description}
+
+                <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                  <IconComponent size={12} className={iconColor} />
+                  <span>{stage.subtitle}</span>
                 </div>
               </div>
             </div>
