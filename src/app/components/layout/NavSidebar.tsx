@@ -1,4 +1,5 @@
 import React from "react";
+import nxpLogo from "../../../../NXP.png";
 import {
   LayoutDashboard,
   FileText,
@@ -12,7 +13,6 @@ import {
   GitBranch,
   Wand2,
   Download,
-  Cpu,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 
@@ -41,8 +41,8 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
       {/* Brand Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-            <Cpu size={20} className="stroke-[2.2]" />
+          <div className="h-9 px-2 py-1 rounded-lg bg-white flex items-center justify-center shadow-xs border border-white/20 shrink-0">
+            <img src={nxpLogo} alt="NXP Semiconductors" className="h-5 w-auto object-contain" />
           </div>
           <div>
             <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">

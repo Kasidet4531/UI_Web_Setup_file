@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import nxpLogo from "../../../NXP.png";
 import { useApp } from "../context/AppContext";
 import { MOCK_USERS } from "../mock/mockUsers";
 import {
@@ -6,7 +7,6 @@ import {
   User,
   Eye,
   EyeOff,
-  Cpu,
   ArrowRight,
   Shield,
   Layers,
@@ -45,16 +45,18 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 sm:p-6 transition-colors">
       <div className="w-full max-w-lg space-y-6">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/25">
-            <Cpu size={30} className="stroke-[2.2]" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex px-4 py-2 rounded-2xl bg-white shadow-md border border-border mx-auto">
+            <img src={nxpLogo} alt="NXP Semiconductors" className="h-10 w-auto object-contain" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-            PSF Request Portal
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto">
-            Probecard Setup File Request, Recipe Lifecycle & Workflow System
-          </p>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+              PSF Request Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto mt-0.5">
+              Probecard Setup File Request, Recipe Lifecycle & Workflow System
+            </p>
+          </div>
         </div>
 
         {/* Form Card */}
