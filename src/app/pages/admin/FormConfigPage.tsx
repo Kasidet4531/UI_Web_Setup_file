@@ -1,222 +1,859 @@
-import { useState } from "react";
-import { ACTIVE_SCHEMA, FormSchema } from "../../mock/mockFormSchema";
-import { Eye, Code, Save, CheckCircle } from "lucide-react";
+import React, { useState } from "react";
+import { useApp } from "../../context/AppContext";
+import {
+  ACTIVE_SCHEMA,
+  FormSchema,
+  SectionDef,
+  FieldDef,
+} from "../../mock/mockFormSchema";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Eye,
+  Sliders,
+  Code,
+  Save,
+  Send,
+  RotateCcw,
+  CheckCircle2,
+  X,
+  Layers,
+  HelpCircle,
+  Sparkles,
+  Check,
+} from "lucide-react";
+
+type TabMode = "builder" | "preview" | "json";
+
+interface FieldModalState {
+  isOpen: boolean;
+  isEdit: boolean;
+  sectionIndex: number;
+  fieldIndex: number;
+  field: FieldDef;
+}
+
+const EMPTY_FIELD: FieldDef = {
+  fieldKey: "",
+  canonicalKey: "",
+  label: "",
+  type: "text",
+  required: false,
+  placeholder: "",
+  options: [],
+};
 
 export function FormConfigPage() {
-  const [schemaText, setSchemaText] = useState(
-    JSON.stringify(ACTIVE_SCHEMA, null, 2)
-  );
-  const [parseError, setParseError] = useState("");
-  const [preview, setPreview] = useState<FormSchema | null>(ACTIVE_SCHEMA);
-  const [tab, setTab] = useState<"editor" | "preview">("editor");
-  const [saved, setSaved] = useState(false);
+  const { activeSchema, updateActiveSchema } = useApp();
 
-  const handleSchemaChange = (text: string) => {
-    setSchemaText(text);
-    try {
-      const parsed = JSON.parse(text);
-      setPreview(parsed);
-      setParseError("");
-    } catch (e: unknown) {
-      setParseError((e as Error).message);
-      setPreview(null);
+  // Local working copy of the schema
+  const [schema, setSchema] = useState<FormSchema>(() =>
+    JSON.parse(JSON.stringify(activeSchema || ACTIVE_SCHEMA))
+  );
+
+  const [activeTab, setActiveTab] = useState<TabMode>("builder");
+  const [jsonText, setJsonText] = useState(() => JSON.stringify(schema, null, 2));
+  const [jsonError, setJsonError] = useState("");
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  // Field Edit / Add Modal State
+  const [fieldModal, setFieldModal] = useState<FieldModalState>({
+    isOpen: false,
+    isEdit: false,
+    sectionIndex: 0,
+    fieldIndex: 0,
+    field: { ...EMPTY_FIELD },
+  });
+
+  // Section Name Edit Modal State
+  const [sectionModal, setSectionModal] = useState<{
+    isOpen: boolean;
+    isEdit: boolean;
+    sectionIndex: number;
+    title: string;
+  }>({
+    isOpen: false,
+    isEdit: false,
+    sectionIndex: 0,
+    title: "",
+  });
+
+  // Temp option input for modal
+  const [newOptionValue, setNewOptionValue] = useState("");
+
+  // Sync schema changes to JSON
+  const handleSchemaUpdate = (newSchema: FormSchema) => {
+    setSchema(newSchema);
+    setJsonText(JSON.stringify(newSchema, null, 2));
+    setJsonError("");
+  };
+
+  // ─── Save Draft vs Publish ──────────────────────────────────────────────────
+  const handleSaveDraft = () => {
+    updateActiveSchema(schema);
+    setSaveStatus("Draft Saved Successfully!");
+    setTimeout(() => setSaveStatus(null), 3000);
+  };
+
+  const handlePublish = () => {
+    const nextVersion = schema.version + 1;
+    const publishedSchema: FormSchema = {
+      ...schema,
+      version: nextVersion,
+    };
+    handleSchemaUpdate(publishedSchema);
+    updateActiveSchema(publishedSchema);
+    setSaveStatus(`Published as Schema Version v${nextVersion}!`);
+    setTimeout(() => setSaveStatus(null), 3500);
+  };
+
+  const handleResetToDefault = () => {
+    if (confirm("Reset form schema back to original default? Unsaved changes will be lost.")) {
+      const resetSchema = JSON.parse(JSON.stringify(ACTIVE_SCHEMA));
+      handleSchemaUpdate(resetSchema);
+      updateActiveSchema(resetSchema);
+      setSaveStatus("Reset to default schema.");
+      setTimeout(() => setSaveStatus(null), 2500);
     }
   };
 
-  const handleSave = () => {
-    if (parseError || !preview) return;
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  // ─── JSON Sync Handler ──────────────────────────────────────────────────────
+  const handleJsonChange = (text: string) => {
+    setJsonText(text);
+    try {
+      const parsed = JSON.parse(text);
+      setSchema(parsed);
+      setJsonError("");
+    } catch (e: any) {
+      setJsonError(e.message || "Invalid JSON syntax");
+    }
+  };
+
+  // ─── Field CRUD Handlers ────────────────────────────────────────────────────
+  const openAddField = (sectionIdx: number) => {
+    setFieldModal({
+      isOpen: true,
+      isEdit: false,
+      sectionIndex: sectionIdx,
+      fieldIndex: -1,
+      field: {
+        fieldKey: "",
+        canonicalKey: "",
+        label: "",
+        type: "text",
+        required: false,
+        placeholder: "",
+        options: [],
+      },
+    });
+    setNewOptionValue("");
+  };
+
+  const openEditField = (sectionIdx: number, fieldIdx: number) => {
+    const targetField = schema.sections[sectionIdx].fields[fieldIdx];
+    setFieldModal({
+      isOpen: true,
+      isEdit: true,
+      sectionIndex: sectionIdx,
+      fieldIndex: fieldIdx,
+      field: JSON.parse(JSON.stringify(targetField)),
+    });
+    setNewOptionValue("");
+  };
+
+  const handleSaveFieldModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fieldModal.field.label.trim()) return;
+
+    const key =
+      fieldModal.field.fieldKey.trim() ||
+      fieldModal.field.label.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+    const finalField: FieldDef = {
+      ...fieldModal.field,
+      fieldKey: key,
+      canonicalKey: key,
+    };
+
+    const newSections = [...schema.sections];
+    if (fieldModal.isEdit) {
+      newSections[fieldModal.sectionIndex].fields[fieldModal.fieldIndex] = finalField;
+    } else {
+      newSections[fieldModal.sectionIndex].fields.push(finalField);
+    }
+
+    handleSchemaUpdate({ ...schema, sections: newSections });
+    setFieldModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDeleteField = (sectionIdx: number, fieldIdx: number) => {
+    if (confirm("Are you sure you want to delete this field?")) {
+      const newSections = [...schema.sections];
+      newSections[sectionIdx].fields.splice(fieldIdx, 1);
+      handleSchemaUpdate({ ...schema, sections: newSections });
+    }
+  };
+
+  const handleMoveField = (sectionIdx: number, fieldIdx: number, direction: "up" | "down") => {
+    const newSections = [...schema.sections];
+    const fields = newSections[sectionIdx].fields;
+    const targetIdx = direction === "up" ? fieldIdx - 1 : fieldIdx + 1;
+    if (targetIdx < 0 || targetIdx >= fields.length) return;
+
+    const temp = fields[fieldIdx];
+    fields[fieldIdx] = fields[targetIdx];
+    fields[targetIdx] = temp;
+
+    handleSchemaUpdate({ ...schema, sections: newSections });
+  };
+
+  // ─── Section CRUD Handlers ──────────────────────────────────────────────────
+  const openAddSection = () => {
+    setSectionModal({
+      isOpen: true,
+      isEdit: false,
+      sectionIndex: -1,
+      title: "",
+    });
+  };
+
+  const openEditSection = (sectionIdx: number) => {
+    setSectionModal({
+      isOpen: true,
+      isEdit: true,
+      sectionIndex: sectionIdx,
+      title: schema.sections[sectionIdx].title,
+    });
+  };
+
+  const handleSaveSectionModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sectionModal.title.trim()) return;
+
+    const newSections = [...schema.sections];
+    if (sectionModal.isEdit) {
+      newSections[sectionModal.sectionIndex].title = sectionModal.title.trim();
+    } else {
+      const key = sectionModal.title.toLowerCase().replace(/[^a-z0-9]/g, "_");
+      newSections.push({
+        sectionKey: key,
+        title: sectionModal.title.trim(),
+        editableBy: ["requester", "admin"],
+        visibleTo: ["requester", "setup_owner", "admin"],
+        fields: [],
+      });
+    }
+
+    handleSchemaUpdate({ ...schema, sections: newSections });
+    setSectionModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDeleteSection = (sectionIdx: number) => {
+    if (confirm(`Delete section "${schema.sections[sectionIdx].title}" and all its fields?`)) {
+      const newSections = [...schema.sections];
+      newSections.splice(sectionIdx, 1);
+      handleSchemaUpdate({ ...schema, sections: newSections });
+    }
   };
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", background: "var(--muted)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+    <div className="space-y-6">
+      {/* Action Header & Tabs */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-border">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-foreground">{schema.title}</h1>
+            <span className="text-xs font-bold font-mono-code bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 px-2.5 py-0.5 rounded-full">
+              v{schema.version}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Customize form categories, input parameters, required validations, and dropdown options
+          </p>
+        </div>
+
+        {/* Action Buttons: Save Draft & Publish */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
-            onClick={() => setTab("editor")}
-            style={{
-              padding: "7px 14px",
-              background: tab === "editor" ? "var(--primary)" : "none",
-              color: tab === "editor" ? "var(--primary-foreground)" : "var(--muted-foreground)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
+            onClick={handleResetToDefault}
+            className="btn-ghost text-xs py-1.5 px-2.5 text-muted-foreground hover:text-foreground"
+            title="Reset to default schema"
           >
-            <Code size={14} /> JSON Editor
+            <RotateCcw size={14} />
+            <span>Reset</span>
           </button>
+
           <button
-            onClick={() => setTab("preview")}
-            style={{
-              padding: "7px 14px",
-              background: tab === "preview" ? "var(--primary)" : "none",
-              color: tab === "preview" ? "var(--primary-foreground)" : "var(--muted-foreground)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
+            onClick={handleSaveDraft}
+            className="btn-secondary text-xs py-2 px-3 shadow-xs flex items-center gap-1.5"
           >
-            <Eye size={14} /> Live Preview
+            <Save size={14} className="text-muted-foreground" />
+            <span>Save Draft</span>
+          </button>
+
+          <button
+            onClick={handlePublish}
+            className="btn-primary text-xs py-2 px-3.5 shadow-sm bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+          >
+            <Send size={14} />
+            <span>Publish Schema (v{schema.version + 1})</span>
           </button>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={!!parseError || !preview}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "7px 14px",
-            background: saved ? "#d1fae5" : parseError ? "var(--muted)" : "var(--primary)",
-            color: saved ? "#065f46" : parseError ? "var(--muted-foreground)" : "var(--primary-foreground)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            cursor: parseError ? "not-allowed" : "pointer",
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
-          {saved ? <><CheckCircle size={14} /> Published!</> : <><Save size={14} /> Save & Publish</>}
-        </button>
-        {saved && (
-          <span style={{ fontSize: 12, color: "#065f46" }}>
-            Form schema v{(preview?.version ?? 0) + 1} would be published.
-          </span>
-        )}
       </div>
 
-      {tab === "editor" ? (
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
-            {parseError && (
-              <div
-                style={{
-                  background: "#fee2e2",
-                  color: "#991b1b",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius)",
-                  fontSize: 12,
-                  marginBottom: 8,
-                }}
-              >
-                JSON Error: {parseError}
-              </div>
-            )}
-            <textarea
-              value={schemaText}
-              onChange={(e) => handleSchemaChange(e.target.value)}
-              style={{
-                width: "100%",
-                height: 600,
-                padding: 14,
-                fontFamily: "monospace",
-                fontSize: 12,
-                border: `1px solid ${parseError ? "#ef4444" : "var(--border)"}`,
-                borderRadius: "var(--radius)",
-                background: "var(--card)",
-                color: "var(--foreground)",
-                resize: "vertical",
-                outline: "none",
-                boxSizing: "border-box",
-                lineHeight: 1.5,
-              }}
-            />
-          </div>
-          <div
-            style={{
-              width: 280,
-              background: "var(--muted)",
-              borderRadius: "var(--radius)",
-              padding: 14,
-              fontSize: 12,
-              color: "var(--muted-foreground)",
-              lineHeight: 1.7,
-            }}
-          >
-            <div style={{ fontWeight: 600, color: "var(--foreground)", marginBottom: 8 }}>Schema Guide</div>
-            <ul style={{ paddingLeft: 16, margin: 0 }}>
-              <li><code>formKey</code> — unique form identifier</li>
-              <li><code>version</code> — increment when publishing</li>
-              <li><code>sections[]</code> — ordered form sections</li>
-              <li><code>fields[].type</code> — text, select, radio, textarea, date</li>
-              <li><code>fields[].required</code> — validation flag</li>
-              <li><code>fields[].searchable</code> — index for search</li>
-              <li><code>fields[].autofillTrigger</code> — triggers auto-fill lookup</li>
-              <li><code>visibleWhenStatusIn</code> — section visibility by status</li>
-              <li><code>editableBy</code> — roles that can edit</li>
-            </ul>
-          </div>
+      {/* Save / Publish Toast Notification */}
+      {saveStatus && (
+        <div className="glass-panel p-3 bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 size={16} className="text-emerald-500" />
+          <span className="font-semibold">{saveStatus}</span>
         </div>
-      ) : (
-        <div>
-          {preview ? (
-            <div>
-              <div style={{ marginBottom: 12, fontSize: 13, color: "var(--muted-foreground)" }}>
-                Form: <strong>{preview.title}</strong> · v{preview.version} · {preview.sections.length} sections
-              </div>
-              {preview.sections.map((section) => (
-                <div
-                  key={section.sectionKey}
-                  style={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    padding: 20,
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>{section.title}</h3>
-                    {section.visibleWhenStatusIn && (
-                      <span style={{ fontSize: 11, color: "#7c3aed", background: "#ede9fe", padding: "1px 7px", borderRadius: 10 }}>
-                        Visible when: {section.visibleWhenStatusIn.join(", ")}
-                      </span>
-                    )}
+      )}
+
+      {/* Mode Switcher Tabs (Full Width) */}
+      <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-xl border border-border">
+        <button
+          onClick={() => setActiveTab("builder")}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            activeTab === "builder"
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/30"
+          }`}
+        >
+          <Sliders size={14} className="text-accent" />
+          <span>Visual Form Builder</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("preview")}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            activeTab === "preview"
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/30"
+          }`}
+        >
+          <Eye size={14} className="text-emerald-500" />
+          <span>Live Form Preview</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("json")}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+            activeTab === "json"
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/30"
+          }`}
+        >
+          <Code size={14} className="text-purple-500" />
+          <span>JSON Schema Code</span>
+        </button>
+      </div>
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 1: VISUAL FORM BUILDER                                            */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "builder" && (
+        <div className="space-y-6">
+          {schema.sections.map((section, sIdx) => (
+            <div key={section.sectionKey || sIdx} className="glass-panel p-5 bg-card space-y-4">
+              {/* Section Header */}
+              <div className="flex items-center justify-between gap-3 pb-3 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
+                    {sIdx + 1}
                   </div>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                      gap: 12,
-                    }}
+                  <div>
+                    <h2 className="text-sm font-bold text-foreground">{section.title}</h2>
+                    <span className="text-[11px] font-mono-code text-muted-foreground">
+                      section_key: {section.sectionKey} · {section.fields.length} fields
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => openEditSection(sIdx)}
+                    className="btn-ghost text-xs p-1.5 text-muted-foreground hover:text-foreground"
+                    title="Edit Section Name"
                   >
-                    {section.fields.map((field) => (
-                      <div
-                        key={field.fieldKey}
-                        style={{
-                          border: "1px dashed var(--border)",
-                          borderRadius: "var(--radius)",
-                          padding: "8px 10px",
-                          fontSize: 12,
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 3 }}>
-                          {field.label}
-                          {field.required && <span style={{ color: "var(--destructive)", marginLeft: 3 }}>*</span>}
+                    <Edit2 size={13} />
+                  </button>
+                  {schema.sections.length > 1 && (
+                    <button
+                      onClick={() => handleDeleteSection(sIdx)}
+                      className="btn-ghost text-xs p-1.5 text-rose-500 hover:text-rose-700"
+                      title="Delete Section"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Section Fields List */}
+              {section.fields.length === 0 ? (
+                <div className="text-center py-6 border border-dashed border-border rounded-xl text-xs text-muted-foreground">
+                  No fields in this section yet. Click "+ Add Field" below.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {section.fields.map((field, fIdx) => (
+                    <div
+                      key={field.fieldKey || fIdx}
+                      className="p-3.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 transition-all flex items-start justify-between gap-3 group"
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-foreground truncate">
+                            {field.label}
+                          </span>
+                          {field.required && (
+                            <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-1.5 py-0.2 rounded">
+                              Required *
+                            </span>
+                          )}
                         </div>
-                        <div style={{ color: "var(--muted-foreground)", display: "flex", gap: 4, flexWrap: "wrap" }}>
-                          <span style={{ background: "var(--muted)", padding: "0 5px", borderRadius: 4 }}>{field.type}</span>
-                          {field.searchable && <span style={{ background: "#dbeafe", color: "#1d4ed8", padding: "0 5px", borderRadius: 4 }}>searchable</span>}
-                          {field.autofillTrigger && <span style={{ background: "#ede9fe", color: "#5b21b6", padding: "0 5px", borderRadius: 4 }}>autofill</span>}
+
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <span className="font-mono-code bg-card px-1.5 py-0.5 rounded border border-border/80 uppercase text-[10px] font-semibold text-accent">
+                            {field.type}
+                          </span>
+                          {field.options && field.options.length > 0 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              ({field.options.length} options)
+                            </span>
+                          )}
+                          {field.placeholder && (
+                            <span className="text-[10px] truncate max-w-[120px] text-muted-foreground italic">
+                              "{field.placeholder}"
+                            </span>
+                          )}
                         </div>
                       </div>
+
+                      {/* Field Action Buttons */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleMoveField(sIdx, fIdx, "up")}
+                          disabled={fIdx === 0}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          title="Move Up"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleMoveField(sIdx, fIdx, "down")}
+                          disabled={fIdx === section.fields.length - 1}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          title="Move Down"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                        <button
+                          onClick={() => openEditField(sIdx, fIdx)}
+                          className="p-1 rounded text-accent hover:text-accent-hover"
+                          title="Edit Field"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteField(sIdx, fIdx)}
+                          className="p-1 rounded text-rose-500 hover:text-rose-700"
+                          title="Delete Field"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Field Button */}
+              <button
+                type="button"
+                onClick={() => openAddField(sIdx)}
+                className="w-full py-2.5 border border-dashed border-accent/40 rounded-xl text-xs font-semibold text-accent hover:bg-accent-light/50 transition-all flex items-center justify-center gap-1.5"
+              >
+                <Plus size={14} />
+                <span>Add Field to {section.title}</span>
+              </button>
+            </div>
+          ))}
+
+          {/* Add New Section Button */}
+          <button
+            type="button"
+            onClick={openAddSection}
+            className="w-full py-3.5 bg-card border-2 border-dashed border-border hover:border-accent rounded-2xl text-xs font-bold text-foreground hover:text-accent transition-all flex items-center justify-center gap-2 shadow-xs"
+          >
+            <Plus size={16} />
+            <span>Add New Form Section</span>
+          </button>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 2: LIVE FORM PREVIEW                                              */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "preview" && (
+        <div className="space-y-6">
+          <div className="p-3 bg-secondary/60 rounded-xl border border-border text-xs text-muted-foreground flex items-center gap-2">
+            <Eye size={14} className="text-emerald-500" />
+            <span>
+              Interactive test preview of the PSF Request form. You can test typing and selecting options below.
+            </span>
+          </div>
+
+          {schema.sections.map((section) => (
+            <div key={section.sectionKey} className="glass-panel p-5 bg-card space-y-4">
+              <h3 className="text-sm font-bold text-foreground pb-2 border-b border-border">
+                {section.title}
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {section.fields.map((field) => (
+                  <div key={field.fieldKey} className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                      <span>{field.label}</span>
+                      {field.required && <span className="text-rose-500">*</span>}
+                    </label>
+
+                    {field.type === "select" ? (
+                      <select className="input-base text-xs">
+                        <option value="">{field.placeholder || "Select option..."}</option>
+                        {field.options?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : field.type === "radio" ? (
+                      <div className="flex items-center gap-3 pt-1">
+                        {field.options?.map((opt) => (
+                          <label key={opt.value} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                            <input type="radio" name={field.fieldKey} value={opt.value} />
+                            <span>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : field.type === "textarea" ? (
+                      <textarea
+                        rows={3}
+                        placeholder={field.placeholder}
+                        className="input-base text-xs"
+                      />
+                    ) : field.type === "date" ? (
+                      <input type="date" className="input-base text-xs" />
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder={field.placeholder}
+                        className="input-base text-xs"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* TAB 3: JSON CODE EDITOR                                               */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {activeTab === "json" && (
+        <div className="space-y-3">
+          {jsonError && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs rounded-xl">
+              JSON Syntax Error: {jsonError}
+            </div>
+          )}
+
+          <div className="glass-panel p-4 bg-card">
+            <textarea
+              value={jsonText}
+              onChange={(e) => handleJsonChange(e.target.value)}
+              rows={24}
+              className="w-full font-mono-code text-xs p-3 bg-background border border-border rounded-lg outline-none focus:border-accent text-foreground leading-relaxed resize-y"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL: ADD / EDIT FIELD DIALOG                                         */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {fieldModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-border flex items-center justify-between bg-secondary/30">
+              <h2 className="text-sm font-bold text-foreground">
+                {fieldModal.isEdit ? "Edit Form Field" : "Add New Form Field"}
+              </h2>
+              <button
+                onClick={() => setFieldModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 rounded text-muted-foreground hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSaveFieldModal} className="p-5 space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Field Label *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Probecard Model"
+                  value={fieldModal.field.label}
+                  onChange={(e) => {
+                    const label = e.target.value;
+                    const autoKey = label.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                    setFieldModal((prev) => ({
+                      ...prev,
+                      field: {
+                        ...prev.field,
+                        label,
+                        fieldKey: prev.isEdit ? prev.field.fieldKey : autoKey,
+                      },
+                    }));
+                  }}
+                  className="input-base text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Input Type</label>
+                  <select
+                    value={fieldModal.field.type}
+                    onChange={(e) =>
+                      setFieldModal((prev) => ({
+                        ...prev,
+                        field: { ...prev.field, type: e.target.value as any },
+                      }))
+                    }
+                    className="input-base text-xs"
+                  >
+                    <option value="text">Text Input</option>
+                    <option value="select">Dropdown (Select)</option>
+                    <option value="radio">Radio Buttons</option>
+                    <option value="date">Date Picker</option>
+                    <option value="textarea">Textarea (Multi-line)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground">Field Key (ID)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="probecard_model"
+                    value={fieldModal.field.fieldKey}
+                    onChange={(e) =>
+                      setFieldModal((prev) => ({
+                        ...prev,
+                        field: { ...prev.field, fieldKey: e.target.value },
+                      }))
+                    }
+                    className="input-base text-xs font-mono-code"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Placeholder / Example Hint</label>
+                <input
+                  type="text"
+                  placeholder="e.g. PBC-2026-X"
+                  value={fieldModal.field.placeholder || ""}
+                  onChange={(e) =>
+                    setFieldModal((prev) => ({
+                      ...prev,
+                      field: { ...prev.field, placeholder: e.target.value },
+                    }))
+                  }
+                  className="input-base text-xs"
+                />
+              </div>
+
+              {/* Required Switch */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-secondary/30">
+                <div>
+                  <div className="font-semibold text-foreground">Mandatory Field</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Must be filled before the requester can submit
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={fieldModal.field.required}
+                  onChange={(e) =>
+                    setFieldModal((prev) => ({
+                      ...prev,
+                      field: { ...prev.field, required: e.target.checked },
+                    }))
+                  }
+                  className="w-4 h-4 accent-accent rounded cursor-pointer"
+                />
+              </div>
+
+              {/* Dropdown Options Editor (Only if select or radio) */}
+              {(fieldModal.field.type === "select" || fieldModal.field.type === "radio") && (
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <label className="font-semibold text-foreground flex items-center justify-between">
+                    <span>Dropdown / Radio Options</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {fieldModal.field.options?.length || 0} items
+                    </span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Type an option name..."
+                      value={newOptionValue}
+                      onChange={(e) => setNewOptionValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (newOptionValue.trim()) {
+                            const val = newOptionValue.trim();
+                            const current = fieldModal.field.options || [];
+                            setFieldModal((prev) => ({
+                              ...prev,
+                              field: {
+                                ...prev.field,
+                                options: [...current, { value: val, label: val }],
+                              },
+                            }));
+                            setNewOptionValue("");
+                          }
+                        }
+                      }}
+                      className="input-base text-xs flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newOptionValue.trim()) {
+                          const val = newOptionValue.trim();
+                          const current = fieldModal.field.options || [];
+                          setFieldModal((prev) => ({
+                            ...prev,
+                            field: {
+                              ...prev.field,
+                              options: [...current, { value: val, label: val }],
+                            },
+                          }));
+                          setNewOptionValue("");
+                        }
+                      }}
+                      className="btn-primary text-xs py-2 px-3"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {/* Options Chips */}
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1">
+                    {fieldModal.field.options?.map((opt, oIdx) => (
+                      <span
+                        key={oIdx}
+                        className="inline-flex items-center gap-1 bg-secondary text-foreground border border-border px-2 py-1 rounded-md text-[11px]"
+                      >
+                        <span>{opt.label}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOpts = [...(fieldModal.field.options || [])];
+                            newOpts.splice(oIdx, 1);
+                            setFieldModal((prev) => ({
+                              ...prev,
+                              field: { ...prev.field, options: newOpts },
+                            }));
+                          }}
+                          className="text-muted-foreground hover:text-rose-500 ml-0.5"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setFieldModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="btn-ghost text-xs"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary text-xs py-2 px-4 shadow-sm">
+                  {fieldModal.isEdit ? "Update Field" : "Create Field"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* MODAL: ADD / EDIT SECTION DIALOG                                       */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {sectionModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-secondary/30">
+              <h2 className="text-sm font-bold text-foreground">
+                {sectionModal.isEdit ? "Edit Section Name" : "Add New Form Section"}
+              </h2>
+              <button
+                onClick={() => setSectionModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 rounded text-muted-foreground hover:text-foreground"
+              >
+                <X size={16} />
+              </button>
             </div>
-          ) : (
-            <div style={{ color: "#991b1b", padding: 20 }}>
-              Cannot preview — JSON is invalid. Fix errors in the editor first.
-            </div>
-          )}
+
+            <form onSubmit={handleSaveSectionModal} className="p-5 space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Section Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Probecard Parameters"
+                  value={sectionModal.title}
+                  onChange={(e) =>
+                    setSectionModal((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  className="input-base text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setSectionModal((prev) => ({ ...prev, isOpen: false }))}
+                  className="btn-ghost text-xs"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary text-xs py-2 px-4 shadow-sm">
+                  {sectionModal.isEdit ? "Save Changes" : "Create Section"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

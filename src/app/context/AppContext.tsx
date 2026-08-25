@@ -34,6 +34,7 @@ interface AppContextValue {
 
   // Schema
   activeSchema: FormSchema;
+  updateActiveSchema: (schema: FormSchema) => void;
   getSchemaForVersion: (version: number) => FormSchema | undefined;
 
   // Dynamic statuses & transitions
@@ -53,6 +54,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<PSFRequest[]>(MOCK_REQUESTS);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(MOCK_AUDIT_LOGS);
   const [userLogs, setUserLogs] = useState<UserLog[]>(MOCK_USER_LOGS);
+  const [activeSchema, setActiveSchema] = useState<FormSchema>(ACTIVE_SCHEMA);
   const [statuses, setStatuses] = useState<StatusDef[]>(DEFAULT_STATUSES);
   const [transitions, setTransitions] = useState<TransitionRule[]>(DEFAULT_TRANSITIONS);
 
@@ -313,7 +315,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         auditLogs,
         getRequestLogs,
         addAuditLog,
-        activeSchema: ACTIVE_SCHEMA,
+        activeSchema,
+        updateActiveSchema: setActiveSchema,
         getSchemaForVersion,
         statuses,
         addStatus,
