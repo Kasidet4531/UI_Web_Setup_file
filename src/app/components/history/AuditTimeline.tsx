@@ -18,61 +18,52 @@ import {
 
 const ACTION_CONFIG: Record<
   string,
-  { label: string; icon: React.ReactNode; badgeBg: string; textBadge: string }
+  { label: string; icon: React.ReactNode; badgeBg: string }
 > = {
   CREATE_REQUEST: {
     label: "Request Created",
-    icon: <Plus size={12} />,
+    icon: <Plus size={11} />,
     badgeBg: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
-    textBadge: "Request Created",
   },
   CHANGE_STATUS: {
     label: "Status Changed",
-    icon: <ArrowRightLeft size={12} />,
+    icon: <ArrowRightLeft size={11} />,
     badgeBg: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
-    textBadge: "Status Change",
   },
   UPDATE_FIELD: {
     label: "Field Updated",
-    icon: <Edit3 size={12} />,
+    icon: <Edit3 size={11} />,
     badgeBg: "bg-secondary text-foreground border-border",
-    textBadge: "Field Update",
   },
   UPLOAD_ATTACHMENT: {
-    label: "Attachment Uploaded",
-    icon: <Upload size={12} />,
+    label: "Attachment",
+    icon: <Upload size={11} />,
     badgeBg: "bg-secondary text-foreground border-border",
-    textBadge: "Attachment",
   },
   DELETE_ATTACHMENT: {
-    label: "Attachment Deleted",
-    icon: <Trash2 size={12} />,
+    label: "Deleted",
+    icon: <Trash2 size={11} />,
     badgeBg: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
-    textBadge: "Deleted",
   },
   USE_AUTOFILL: {
-    label: "Auto-fill Applied",
-    icon: <Sparkles size={12} />,
+    label: "Auto-fill",
+    icon: <Sparkles size={11} />,
     badgeBg: "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20",
-    textBadge: "Auto-fill",
   },
   MARK_PSF_CREATED: {
-    label: "PSF Marked Created",
-    icon: <CheckCircle size={12} />,
+    label: "PSF Created",
+    icon: <CheckCircle size={11} />,
     badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
-    textBadge: "PSF Created",
   },
   EXPORT_EXCEL: {
-    label: "Excel Exported",
-    icon: <FileDown size={12} />,
+    label: "Exported",
+    icon: <FileDown size={11} />,
     badgeBg: "bg-secondary text-foreground border-border",
-    textBadge: "Export",
   },
   ADMIN_OVERRIDE: {
-    label: "Admin Override",
-    icon: <Shield size={12} />,
+    label: "Override",
+    icon: <Shield size={11} />,
     badgeBg: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
-    textBadge: "Override",
   },
 };
 
@@ -117,16 +108,128 @@ function formatDateHeader(iso: string) {
   }
 }
 
-export function AuditTimeline({ logs, onSelectRequest }: AuditTimelineProps) {
+export function AuditTimeline({ logs, compact = false, onSelectRequest }: AuditTimelineProps) {
   if (logs.length === 0) {
     return (
-      <div className="text-center py-12 border border-dashed border-border rounded-xl text-xs text-muted-foreground">
-        No audit activity found matching your filters.
+      <div className="text-center py-8 border border-dashed border-border rounded-xl text-xs text-muted-foreground">
+        No audit activity recorded yet.
       </div>
     );
   }
 
-  // Group logs by date
+  // ──────────────────────────────────────────────────────────────────────────
+  // 1. COMPACT MODE: Specially optimized for sidebars in RequestDetailPage
+  // ──────────────────────────────────────────────────────────────────────────
+  if (compact) {
+    return (
+      <div className="relative pl-5 space-y-3 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[1.5px] before:bg-border">
+        {logs.map((log) => {
+          const cfg = ACTION_CONFIG[log.actionType] ?? {
+            label: log.actionType,
+            icon: <Edit3 size={11} />,
+            badgeBg: "bg-secondary text-foreground border-border",
+          };
+
+          const initials = (log.changedByName || log.changedBy || "U")
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2);
+
+          return (
+            <div key={log.id} className="relative group text-xs">
+              {/* Spine Dot */}
+              <div className="absolute -left-5 top-2.5 w-4 h-4 rounded-full border border-border bg-card text-muted-foreground group-hover:text-accent group-hover:border-accent/40 flex items-center justify-center shadow-2xs z-10">
+                {cfg.icon}
+              </div>
+
+              {/* Compact Card */}
+              <div className="p-2.5 rounded-lg border border-border/80 bg-card hover:bg-secondary/20 transition-all space-y-1.5 shadow-2xs">
+                {/* Header: Action Badge + Time */}
+                <div className="flex items-center justify-between gap-1.5">
+                  <span
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-semibold border ${cfg.badgeBg}`}
+                  >
+                    {cfg.icon}
+                    <span>{cfg.label}</span>
+                  </span>
+
+                  <span className="text-[10px] text-muted-foreground font-mono-code flex items-center gap-0.5">
+                    <Clock size={9} />
+                    {formatTime(log.changedAt)}
+                  </span>
+                </div>
+
+                {/* Body: Target Field & Diff */}
+                {(log.fieldLabel || log.oldValue || log.newValue || log.reason) && (
+                  <div className="space-y-1 text-[11px] pt-0.5">
+                    {log.fieldLabel && (
+                      <div className="text-muted-foreground leading-tight">
+                        <span className="text-foreground font-medium">{log.fieldLabel}</span>
+                      </div>
+                    )}
+
+                    {/* Diff Pills */}
+                    {(log.oldValue || log.newValue) && (
+                      <div className="flex items-center gap-1 flex-wrap text-[10px] pt-0.5">
+                        {log.oldValue ? (
+                          <span className="px-1.5 py-0.2 rounded bg-secondary text-muted-foreground border border-border font-mono-code line-through">
+                            {log.oldValue}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic">None</span>
+                        )}
+
+                        <ArrowRight size={10} className="text-muted-foreground/60 shrink-0" />
+
+                        {log.newValue ? (
+                          <span className="px-1.5 py-0.2 rounded bg-accent/10 text-accent font-semibold border border-accent/20 font-mono-code">
+                            {log.newValue}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic">Cleared</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Reason Note */}
+                    {log.reason && (
+                      <div className="text-[10px] italic text-muted-foreground bg-secondary/40 px-1.5 py-0.5 rounded border border-border/40">
+                        "{log.reason}"
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer: Actor Info */}
+                <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/30 text-[10px]">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <div className="w-4 h-4 rounded-full bg-secondary text-muted-foreground border border-border font-bold text-[8px] flex items-center justify-center shrink-0">
+                      {initials}
+                    </div>
+                    <span className="font-medium text-foreground truncate">
+                      {log.changedByName || log.changedBy}
+                    </span>
+                  </div>
+
+                  {log.changedByDepartment && (
+                    <span className="bg-secondary text-muted-foreground px-1 py-0.2 rounded text-[9px] font-semibold border border-border shrink-0">
+                      {log.changedByDepartment}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. FULL MODE: Used in Global Audit History and Request History Pages
+  // ──────────────────────────────────────────────────────────────────────────
   const groupedLogs = logs.reduce((acc, log) => {
     const dateKey = log.changedAt ? log.changedAt.split("T")[0] : "Other";
     if (!acc[dateKey]) {
@@ -161,9 +264,8 @@ export function AuditTimeline({ logs, onSelectRequest }: AuditTimelineProps) {
               {dateLogs.map((log) => {
                 const cfg = ACTION_CONFIG[log.actionType] ?? {
                   label: log.actionType,
-                  icon: <Edit3 size={12} />,
+                  icon: <Edit3 size={11} />,
                   badgeBg: "bg-secondary text-foreground border-border",
-                  textBadge: "Action",
                 };
 
                 const initials = (log.changedByName || log.changedBy || "U")
@@ -245,7 +347,7 @@ export function AuditTimeline({ logs, onSelectRequest }: AuditTimelineProps) {
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-[11px]">
-                            Modified by requester/setup owner
+                            Modified
                           </span>
                         )}
                       </div>

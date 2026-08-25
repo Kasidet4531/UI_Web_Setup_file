@@ -453,12 +453,16 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
                 <History size={13} />
                 <span>Audit History</span>
               </h3>
-              <span className="text-[11px] bg-secondary px-2 py-0.5 rounded-full text-muted-foreground font-semibold">
-                {logs.length} events
-              </span>
+              <button
+                type="button"
+                onClick={() => onNavigate(`/requests/${req.id}/history`)}
+                className="text-[11px] text-accent hover:underline font-semibold"
+              >
+                View Full ({logs.length})
+              </button>
             </div>
 
-            <AuditTimeline logs={logs} />
+            <AuditTimeline logs={logs} compact={true} />
           </div>
         </div>
       </div>
