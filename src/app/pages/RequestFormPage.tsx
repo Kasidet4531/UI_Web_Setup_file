@@ -1,18 +1,28 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { RequesterInfoSection } from "../components/requests/RequesterInfoSection";
 import { AutofillMeta } from "../mock/mockRequests";
 import { ACTIVE_SCHEMA } from "../mock/mockFormSchema";
-import { ArrowLeft, Send, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  Save,
+  CheckCircle2,
+  FilePlus,
+  Layers,
+  Sparkles,
+} from "lucide-react";
 
 interface RequestFormPageProps {
   onNavigate: (path: string) => void;
 }
 
 export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
-  const { createRequest, updateRequest, changeStatus, currentUser, addAuditLog, requests } = useApp();
+  const { createRequest, updateRequest, changeStatus, currentUser, addAuditLog } = useApp();
   const [data, setData] = useState<Record<string, string>>({
     request_date: new Date().toISOString().split("T")[0],
+    product_type: "New Product",
+    priority: "Medium",
   });
   const [autofillMeta, setAutofillMeta] = useState<AutofillMeta[]>([]);
   const [saved, setSaved] = useState(false);
@@ -48,11 +58,11 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
     if (createdId) return createdId;
     const req = createRequest({
       requesterData: data,
-      productType: data.product_type ?? "",
-      priority: data.priority ?? "Medium",
-      title: data.title ?? "",
+      productType: data.product_type ?? "New Product",
+      priority: (data.priority as any) ?? "Medium",
+      title: data.title ?? "New PSF Request",
       dueDate: data.due_date ?? "",
-      requestDate: data.request_date ?? "",
+      requestDate: data.request_date ?? new Date().toISOString().split("T")[0],
       autofillMeta,
     });
     setCreatedId(req.id);
@@ -63,115 +73,89 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
     const id = ensureCreated();
     updateRequest(id, {
       requesterData: data,
-      productType: data.product_type ?? "",
-      priority: data.priority ?? "Medium",
-      title: data.title ?? "",
+      productType: data.product_type ?? "New Product",
+      priority: (data.priority as any) ?? "Medium",
+      title: data.title ?? "New PSF Request",
       dueDate: data.due_date ?? "",
       autofillMeta,
     });
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setTimeout(() => setSaved(false), 2400);
   };
 
   const handleSubmit = () => {
     const id = ensureCreated();
     updateRequest(id, {
       requesterData: data,
-      productType: data.product_type ?? "",
-      priority: data.priority ?? "Medium",
-      title: data.title ?? "",
+      productType: data.product_type ?? "New Product",
+      priority: (data.priority as any) ?? "Medium",
+      title: data.title ?? "New PSF Request",
       dueDate: data.due_date ?? "",
       autofillMeta,
     });
-    changeStatus(id, "SUBMITTED");
+    changeStatus(id, "SUBMITTED", "Submitted new request for PSF setup");
     onNavigate(`/requests/${id}`);
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Header with Navigation & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate("/requests")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 13,
-            }}
+            className="btn-ghost text-xs py-1.5 px-2.5"
           >
-            <ArrowLeft size={15} /> Back
+            <ArrowLeft size={15} />
+            <span>Cancel</span>
           </button>
-          <span style={{ color: "var(--border)" }}>|</span>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>New PSF Request</span>
+          <span className="text-border">|</span>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-accent-light text-accent flex items-center justify-center">
+              <FilePlus size={16} />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-foreground leading-tight">
+                Create New PSF Request
+              </h1>
+              <div className="text-[11px] text-muted-foreground">
+                Active Form Schema v{ACTIVE_SCHEMA.version}
+              </div>
+            </div>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleSaveDraft}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "8px 14px",
-              background: saved ? "#d1fae5" : "var(--secondary)",
-              color: saved ? "#065f46" : "var(--secondary-foreground)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
+            className="btn-secondary text-xs py-1.5"
           >
-            <Save size={14} /> {saved ? "Draft Saved!" : "Save as Draft"}
+            <Save size={14} />
+            <span>{saved ? "Draft Saved!" : "Save Draft"}</span>
           </button>
           <button
             onClick={handleSubmit}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "8px 14px",
-              background: "var(--primary)",
-              color: "var(--primary-foreground)",
-              border: "none",
-              borderRadius: "var(--radius)",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
+            className="btn-primary text-xs py-1.5 shadow-sm"
           >
-            <Send size={14} /> Submit Request
+            <Send size={14} />
+            <span>Submit Request</span>
           </button>
         </div>
       </div>
 
-      <div
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
-          padding: 24,
-          maxWidth: 860,
-        }}
-      >
-        <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
-          Requester Information
-        </h2>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 20 }}>
-          Form Schema v{ACTIVE_SCHEMA.version} · Fill in all required fields before submitting.
-        </p>
+      {/* Main Form Container */}
+      <div className="glass-panel p-6 space-y-6">
+        <div className="border-b border-border pb-4">
+          <h2 className="text-sm font-bold text-foreground">
+            Requester Specification Form
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Fill in required probecard details and recipe specifications. Enter a reference PSF name
+            to trigger automatic auto-fill suggestions.
+          </p>
+        </div>
+
         {reqSection && (
           <RequesterInfoSection
             section={reqSection}
@@ -182,6 +166,29 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
             onAutofillApply={handleAutofillApply}
           />
         )}
+
+        {/* Bottom Form Actions */}
+        <div className="pt-4 border-t border-border flex items-center justify-between flex-wrap gap-3">
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Sparkles size={13} className="text-accent" />
+            <span>Smart Auto-fill is active for historical matching probe cards</span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleSaveDraft}
+              className="btn-secondary"
+            >
+              <Save size={14} /> Save Draft
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="btn-primary shadow-sm"
+            >
+              <Send size={14} /> Submit Request
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

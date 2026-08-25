@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { SectionDef, FieldDef } from "../../mock/mockFormSchema";
 import { AutofillMeta, PSFRequest } from "../../mock/mockRequests";
 import { AutofillBadge } from "./AutofillBadge";
 import { useApp } from "../../context/AppContext";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Check, X, Info } from "lucide-react";
 
 interface RequesterInfoSectionProps {
   section: SectionDef;
@@ -86,34 +86,19 @@ export function RequesterInfoSection({
     const value = data[field.fieldKey] ?? "";
     const meta = getFieldMeta(field.fieldKey);
 
-    const inputStyle: React.CSSProperties = {
-      width: "100%",
-      padding: "8px 10px",
-      border: "1px solid var(--border)",
-      borderRadius: "var(--radius)",
-      fontSize: 13,
-      background: readOnly ? "var(--muted)" : "var(--input-background)",
-      color: "var(--foreground)",
-      boxSizing: "border-box",
-      outline: "none",
-    };
-
     let input: React.ReactNode;
 
     if (field.type === "radio" && field.options) {
       input = (
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <div className="flex gap-4 flex-wrap pt-1">
           {field.options.map((opt) => (
             <label
               key={opt.value}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                cursor: readOnly ? "default" : "pointer",
-                fontSize: 13,
-                fontWeight: value === opt.value ? 600 : 400,
-              }}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                value === opt.value
+                  ? "bg-accent-light border-accent text-accent font-semibold shadow-2xs"
+                  : "bg-card border-border hover:bg-secondary text-foreground"
+              } ${readOnly ? "opacity-75 cursor-default pointer-events-none" : ""}`}
             >
               <input
                 type="radio"
@@ -122,9 +107,9 @@ export function RequesterInfoSection({
                 checked={value === opt.value}
                 onChange={() => !readOnly && handleChange(field, opt.value)}
                 disabled={readOnly}
-                style={{ accentColor: "var(--primary)" }}
+                className="accent-accent"
               />
-              {opt.label}
+              <span>{opt.label}</span>
             </label>
           ))}
         </div>
@@ -135,9 +120,9 @@ export function RequesterInfoSection({
           value={value}
           onChange={(e) => handleChange(field, e.target.value)}
           disabled={readOnly}
-          style={inputStyle}
+          className="input-base text-xs"
         >
-          <option value="">Select...</option>
+          <option value="">Select option...</option>
           {field.options.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -153,7 +138,7 @@ export function RequesterInfoSection({
           readOnly={readOnly}
           placeholder={field.placeholder}
           rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
+          className="input-base text-xs resize-y"
         />
       );
     } else if (field.type === "date") {
@@ -163,7 +148,7 @@ export function RequesterInfoSection({
           value={value}
           onChange={(e) => handleChange(field, e.target.value)}
           readOnly={readOnly}
-          style={inputStyle}
+          className="input-base text-xs"
         />
       );
     } else {
@@ -174,19 +159,17 @@ export function RequesterInfoSection({
           onChange={(e) => handleChange(field, e.target.value)}
           readOnly={readOnly}
           placeholder={field.placeholder}
-          style={inputStyle}
+          className="input-base text-xs"
         />
       );
     }
 
     return (
-      <div key={field.fieldKey} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)" }}>
-            {field.label}
-            {field.required && (
-              <span style={{ color: "var(--destructive)", marginLeft: 3 }}>*</span>
-            )}
+      <div key={field.fieldKey} className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+            <span>{field.label}</span>
+            {field.required && <span className="text-rose-500 font-bold">*</span>}
           </label>
           {meta && <AutofillBadge sourceRequestNo={meta.sourceRequestNo} edited={meta.edited} />}
         </div>
@@ -195,95 +178,86 @@ export function RequesterInfoSection({
     );
   };
 
-  const cols1 = ["product_type", "description", "title", "request_for"];
-  const singleFields = section.fields.filter((f) => cols1.includes(f.fieldKey));
-  const gridFields = section.fields.filter((f) => !cols1.includes(f.fieldKey));
-
   return (
-    <div>
+    <div className="space-y-5">
       {/* Autofill suggestion banner */}
       {autofillSuggestion && (
-        <div
-          style={{
-            background: "#ede9fe",
-            border: "1px solid #c4b5fd",
-            borderRadius: "var(--radius)",
-            padding: "12px 16px",
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <Sparkles size={16} color="#5b21b6" />
-          <div style={{ flex: 1, fontSize: 13 }}>
-            <span style={{ color: "#5b21b6", fontWeight: 500 }}>Auto-fill available</span>
-            <span style={{ color: "#6d28d9", marginLeft: 8 }}>
-              Matching data found from {autofillSuggestion.sourceReqNo}
-            </span>
+        <div className="glass-panel p-3.5 bg-indigo-50/80 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles size={15} />
+            </div>
+            <div>
+              <div className="font-semibold text-indigo-900 dark:text-indigo-300">
+                Auto-fill Reference Detected
+              </div>
+              <p className="text-indigo-700 dark:text-indigo-400 text-[11px]">
+                Matching historical specs found from{" "}
+                <strong className="font-mono">{autofillSuggestion.sourceReqNo}</strong>. Apply to
+                prefill wafer fab, probecard, and description?
+              </p>
+            </div>
           </div>
-          <button
-            onClick={applyAutofill}
-            style={{
-              padding: "5px 12px",
-              background: "#5b21b6",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius)",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 500,
-            }}
-          >
-            Apply Auto-fill
-          </button>
-          <button
-            onClick={() => setAutofillSuggestion(null)}
-            style={{
-              padding: "5px 8px",
-              background: "none",
-              color: "#6d28d9",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            Dismiss
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              onClick={() => setAutofillSuggestion(null)}
+              className="btn-ghost text-xs text-indigo-700 dark:text-indigo-300 py-1"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={applyAutofill}
+              className="btn-primary bg-indigo-600 hover:bg-indigo-700 text-xs py-1 shadow-sm"
+            >
+              <Check size={13} /> Apply Auto-fill
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Product Type — full width at top */}
-      {section.fields
-        .filter((f) => f.fieldKey === "product_type")
-        .map(renderField)}
-
-      {/* Title, Request For — full width */}
-      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Primary Category: Product Selection */}
+      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-3">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          1. Product Classification
+        </div>
         {section.fields
-          .filter((f) => ["title", "request_for"].includes(f.fieldKey))
+          .filter((f) => f.fieldKey === "product_type")
           .map(renderField)}
       </div>
 
-      {/* Grid fields */}
-      <div
-        style={{
-          marginTop: 16,
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-          gap: 14,
-        }}
-      >
-        {section.fields
-          .filter(
-            (f) =>
-              !["product_type", "title", "request_for", "description"].includes(f.fieldKey)
-          )
-          .map(renderField)}
+      {/* General Information */}
+      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-4">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          2. General Specifications
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {section.fields
+            .filter((f) => ["title", "request_for"].includes(f.fieldKey))
+            .map(renderField)}
+        </div>
       </div>
 
-      {/* Description — full width at bottom */}
-      <div style={{ marginTop: 14 }}>
+      {/* Probecard & Engineering Data Grid */}
+      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-4">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          3. Probecard & Test Parameters
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {section.fields
+            .filter(
+              (f) =>
+                !["product_type", "title", "request_for", "description"].includes(f.fieldKey)
+            )
+            .map(renderField)}
+        </div>
+      </div>
+
+      {/* Notes / Description */}
+      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-3">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          4. Special Instructions & Recipe Notes
+        </div>
         {section.fields
           .filter((f) => f.fieldKey === "description")
           .map(renderField)}

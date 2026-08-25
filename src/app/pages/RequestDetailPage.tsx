@@ -1,13 +1,26 @@
-import { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { RequesterInfoSection } from "../components/requests/RequesterInfoSection";
 import { PSFCreatedSection } from "../components/requests/PSFCreatedSection";
 import { StatusDropdown } from "../components/requests/StatusDropdown";
 import { StatusBadge } from "../components/requests/StatusBadge";
+import { WorkflowStepper } from "../components/requests/WorkflowStepper";
 import { AuditTimeline } from "../components/history/AuditTimeline";
 import { AutofillMeta } from "../mock/mockRequests";
-import { ACTIVE_SCHEMA, FORM_SCHEMA_V1, ALL_SCHEMAS } from "../mock/mockFormSchema";
-import { ArrowLeft, Save, Send, History, AlertTriangle } from "lucide-react";
+import { ACTIVE_SCHEMA, ALL_SCHEMAS } from "../mock/mockFormSchema";
+import {
+  ArrowLeft,
+  Save,
+  Send,
+  History,
+  AlertTriangle,
+  Calendar,
+  User,
+  Shield,
+  Clock,
+  CheckCircle2,
+  FileSpreadsheet,
+} from "lucide-react";
 
 interface RequestDetailPageProps {
   requestId: string;
@@ -15,7 +28,15 @@ interface RequestDetailPageProps {
 }
 
 export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPageProps) {
-  const { getRequest, updateRequest, changeStatus, currentUser, getRequestLogs, addAuditLog, activeSchema } = useApp();
+  const {
+    getRequest,
+    updateRequest,
+    changeStatus,
+    currentUser,
+    getRequestLogs,
+    addAuditLog,
+    activeSchema,
+  } = useApp();
 
   const req = getRequest(requestId);
 
@@ -27,10 +48,7 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
   // Draft version upgrade dialog
   const [showVersionUpgrade, setShowVersionUpgrade] = useState(() => {
     if (!req) return false;
-    return (
-      req.status === "DRAFT" &&
-      req.formVersion < ACTIVE_SCHEMA.version
-    );
+    return req.status === "DRAFT" && req.formVersion < ACTIVE_SCHEMA.version;
   });
   const [useOldVersion, setUseOldVersion] = useState(false);
 
@@ -38,13 +56,19 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
 
   if (!req) {
     return (
-      <div style={{ textAlign: "center", padding: 40, color: "var(--muted-foreground)" }}>
-        Request not found.
+      <div className="glass-panel text-center py-16 px-4 max-w-md mx-auto my-12 space-y-3">
+        <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950 text-rose-600 mx-auto flex items-center justify-center">
+          <AlertTriangle size={24} />
+        </div>
+        <h3 className="text-base font-semibold text-foreground">Request Not Found</h3>
+        <p className="text-xs text-muted-foreground">
+          The requested PSF request ID does not exist or may have been removed.
+        </p>
         <button
           onClick={() => onNavigate("/requests")}
-          style={{ display: "block", margin: "12px auto 0", cursor: "pointer", background: "none", border: "none", color: "var(--primary)", fontSize: 14, textDecoration: "underline" }}
+          className="btn-primary text-xs mt-2"
         >
-          ← Back to requests
+          ← Back to Requests List
         </button>
       </div>
     );
@@ -60,7 +84,7 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
 
   // Requester can edit only their own draft
   const requesterSectionReadOnly =
-    !(isAdmin) &&
+    !isAdmin &&
     !(isRequester && req.requester === currentUser?.username && req.status === "DRAFT");
 
   const psfSectionReadOnly = !(isSetupOwner || isAdmin);
@@ -99,285 +123,222 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
       newValue: Object.keys(suggestions).join(", "),
       changedBy: currentUser?.username ?? "",
       changedByName: currentUser?.name ?? "",
-      changedByRole: currentUser?.role ?? "",
-      changedByDepartment: currentUser?.department,
+      changedByRole: currentUser?.role ?? "requester",
+      changedByDepartment: currentUser?.department ?? null,
       changedAt: new Date().toISOString(),
-      reason: `Auto-filled from ${sourceReqNo}`,
+      reason: `Auto-filled ${Object.keys(suggestions).length} fields from ${sourceReqNo}`,
     });
   };
 
   const handleSave = () => {
-    updateRequest(req.id, { requesterData, psfCreatedData, autofillMeta });
+    updateRequest(req.id, {
+      requesterData,
+      psfCreatedData,
+      autofillMeta,
+      productType: requesterData.product_type ?? req.productType,
+      priority: (requesterData.priority as any) ?? req.priority,
+      title: requesterData.title ?? req.title,
+      dueDate: requesterData.due_date ?? req.dueDate,
+    });
+    addAuditLog({
+      requestId: req.id,
+      requestNo: req.requestNo,
+      actionType: "UPDATE_FIELD",
+      fieldKey: "form_data",
+      fieldLabel: "Request Form Updated",
+      changedBy: currentUser?.username ?? "",
+      changedByName: currentUser?.name ?? "",
+      changedByRole: currentUser?.role ?? "requester",
+      changedByDepartment: currentUser?.department ?? null,
+      changedAt: new Date().toISOString(),
+    });
     setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setTimeout(() => setSaved(false), 2200);
   };
 
-  const handleSubmit = () => {
-    updateRequest(req.id, { requesterData, psfCreatedData, autofillMeta });
+  const handleSubmitDraft = () => {
+    handleSave();
     changeStatus(req.id, "SUBMITTED");
-  };
-
-  const handleVersionUpgrade = (upgrade: boolean) => {
-    setShowVersionUpgrade(false);
-    if (upgrade) {
-      updateRequest(req.id, { formVersion: ACTIVE_SCHEMA.version });
-      setUseOldVersion(false);
-    } else {
-      setUseOldVersion(true);
-    }
   };
 
   const reqSection = effectiveSchema.sections.find(
     (s) => s.sectionKey === "requester_information"
   );
   const psfSection = effectiveSchema.sections.find(
-    (s) => s.sectionKey === "psf_created_information"
+    (s) => s.sectionKey === "psf_created_section"
   );
 
   return (
-    <div>
-      {/* Draft version upgrade dialog */}
-      {showVersionUpgrade && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 200,
-          }}
-        >
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: "var(--radius)",
-              padding: 28,
-              width: 440,
-              boxShadow: "0 8px 40px rgba(0,0,0,0.2)",
-            }}
+    <div className="space-y-6">
+      {/* Top Navigation Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigate("/requests")}
+            className="btn-ghost text-xs py-1.5 px-2.5"
           >
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 16 }}>
-              <AlertTriangle size={22} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div>
-                <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-                  Form Version Update Available
-                </h2>
-                <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-                  This draft was created with Form Schema <strong>v{req.formVersion}</strong>, but the active schema
-                  is <strong>v{ACTIVE_SCHEMA.version}</strong>. Would you like to upgrade to the latest version?
-                </p>
-                <ul style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 8, paddingLeft: 16, lineHeight: 1.8 }}>
-                  <li><strong>Upgrade</strong>: Apply latest schema. Matching fields are preserved; new fields are added.</li>
-                  <li><strong>Keep Old Version</strong>: Continue filling in the original form version.</li>
-                </ul>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <ArrowLeft size={15} />
+            <span>Back to Requests</span>
+          </button>
+          <span className="text-border">|</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono-code text-sm font-bold text-foreground">
+              {req.requestNo}
+            </span>
+            <StatusBadge status={req.status} size="sm" />
+          </div>
+        </div>
+
+        {/* Top Actions */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {req.status === "DRAFT" && (isRequester || isAdmin) && (
+            <>
               <button
-                onClick={() => handleVersionUpgrade(false)}
-                style={{
-                  padding: "8px 16px",
-                  background: "var(--secondary)",
-                  color: "var(--secondary-foreground)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
+                onClick={handleSave}
+                className="btn-secondary text-xs py-1.5"
               >
-                Keep Old Version (v{req.formVersion})
+                <Save size={14} />
+                <span>{saved ? "Saved!" : "Save Draft"}</span>
               </button>
               <button
-                onClick={() => handleVersionUpgrade(true)}
-                style={{
-                  padding: "8px 16px",
-                  background: "var(--primary)",
-                  color: "var(--primary-foreground)",
-                  border: "none",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
+                onClick={handleSubmitDraft}
+                className="btn-primary text-xs py-1.5 shadow-sm"
               >
-                Upgrade to v{ACTIVE_SCHEMA.version}
+                <Send size={14} />
+                <span>Submit Request</span>
               </button>
+            </>
+          )}
+
+          {req.status !== "DRAFT" && (!requesterSectionReadOnly || !psfSectionReadOnly) && (
+            <button
+              onClick={handleSave}
+              className="btn-primary text-xs py-1.5 shadow-sm"
+            >
+              <Save size={14} />
+              <span>{saved ? "Saved Successfully!" : "Save Changes"}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => onNavigate(`/requests/${req.id}/history`)}
+            className="btn-secondary text-xs py-1.5"
+          >
+            <History size={14} />
+            <span>Full History</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Visual Workflow Stepper */}
+      <WorkflowStepper
+        status={req.status}
+        submittedAt={req.submittedAt}
+        psfCreatedAt={req.psfCreatedAt}
+        completedAt={req.completedAt}
+      />
+
+      {/* Version Upgrade Banner if applicable */}
+      {showVersionUpgrade && (
+        <div className="glass-panel p-4 border-l-4 border-l-purple-500 bg-purple-50/50 dark:bg-purple-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="space-y-0.5">
+            <div className="font-semibold text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+              <AlertTriangle size={15} />
+              <span>Form Schema Update Available</span>
             </div>
+            <p className="text-purple-700 dark:text-purple-400 text-[11px]">
+              This draft was created with schema v{req.formVersion}. The active schema is now v
+              {ACTIVE_SCHEMA.version}. You can upgrade seamlessly.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setUseOldVersion(true);
+                setShowVersionUpgrade(false);
+              }}
+              className="btn-secondary text-xs py-1"
+            >
+              Keep v{req.formVersion}
+            </button>
+            <button
+              onClick={() => {
+                updateRequest(req.id, { formVersion: ACTIVE_SCHEMA.version });
+                setShowVersionUpgrade(false);
+              }}
+              className="btn-primary text-xs py-1"
+            >
+              Upgrade to v{ACTIVE_SCHEMA.version}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Breadcrumb + actions */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={() => onNavigate("/requests")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 13,
-            }}
-          >
-            <ArrowLeft size={15} /> Back
-          </button>
-          <span style={{ color: "var(--border)" }}>|</span>
-          <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>PSF Requests</span>
-          <span style={{ color: "var(--muted-foreground)" }}>/</span>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{req.requestNo}</span>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <StatusDropdown requestId={req.id} currentStatus={req.status} />
-          <button
-            onClick={() => onNavigate(`/requests/${req.id}/history`)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "7px 12px",
-              background: "var(--secondary)",
-              color: "var(--secondary-foreground)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            <History size={14} /> History
-          </button>
-          {!requesterSectionReadOnly && (
-            <>
-              <button
-                onClick={handleSave}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "7px 14px",
-                  background: saved ? "#d1fae5" : "var(--secondary)",
-                  color: saved ? "#065f46" : "var(--secondary-foreground)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
-              >
-                <Save size={14} /> {saved ? "Saved!" : "Save Draft"}
-              </button>
-              {req.status === "DRAFT" && (
-                <button
-                  onClick={handleSubmit}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    padding: "7px 14px",
-                    background: "var(--primary)",
-                    color: "var(--primary-foreground)",
-                    border: "none",
-                    borderRadius: "var(--radius)",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontWeight: 500,
-                  }}
-                >
-                  <Send size={14} /> Submit Request
-                </button>
-              )}
-            </>
-          )}
-          {!psfSectionReadOnly && req.status !== "DRAFT" && (
-            <button
-              onClick={handleSave}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "7px 14px",
-                background: saved ? "#d1fae5" : "var(--primary)",
-                color: saved ? "#065f46" : "var(--primary-foreground)",
-                border: "none",
-                borderRadius: "var(--radius)",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 500,
-              }}
-            >
-              <Save size={14} /> {saved ? "Saved!" : "Save PSF Info"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Title row */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700 }}>{req.title || "Untitled Request"}</h1>
-          <StatusBadge status={req.status} />
-          {req.setupOwnerRole && (
-            <span
-              style={{
-                padding: "2px 10px",
-                background: req.setupOwnerRole === "GNTC" ? "#dbeafe" : "#fce7f3",
-                color: req.setupOwnerRole === "GNTC" ? "#1d4ed8" : "#be185d",
-                borderRadius: 12,
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {req.setupOwnerRole}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 4, display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <span>Request No: <strong>{req.requestNo}</strong></span>
-          <span>Form Schema: <strong>v{useOldVersion ? req.formVersion : (req.formVersion < ACTIVE_SCHEMA.version ? ACTIVE_SCHEMA.version : req.formVersion)}</strong></span>
-          <span>Requester: <strong>{req.requesterName}</strong></span>
-          {req.setupOwnerName && <span>Setup Owner: <strong>{req.setupOwnerName} ({req.setupOwnerRole})</strong></span>}
-          <span>Due: <strong>{req.dueDate}</strong></span>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-        {/* Main form */}
-        <div style={{ flex: "1 1 600px", minWidth: 0 }}>
-          {/* Section 1 - Requester Information */}
-          {reqSection && (
-            <div
-              style={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                padding: 20,
-                marginBottom: 20,
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  marginBottom: 16,
-                  paddingBottom: 10,
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                1. Requester Information
+      {/* 2-Column Responsive Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column (2/3): Form Sections */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Header Summary Card */}
+          <div className="glass-panel p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-foreground">
+                {req.title || "Untitled PSF Request"}
               </h2>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="bg-secondary px-2 py-0.5 rounded font-medium border border-border">
+                  {req.productType || "General Product"}
+                </span>
+                <span className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold border border-blue-200 dark:border-blue-800">
+                  Priority: {req.priority}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t border-border text-xs">
+              <div>
+                <div className="text-muted-foreground text-[11px]">Probecard</div>
+                <div className="font-semibold text-foreground mt-0.5">
+                  {req.requesterData?.probecard_name || "—"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-[11px]">Due Date</div>
+                <div className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
+                  <Calendar size={12} className="text-muted-foreground" />
+                  <span>{req.dueDate || "Not specified"}</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-[11px]">Requester</div>
+                <div className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
+                  <User size={12} className="text-muted-foreground" />
+                  <span>{req.requesterName}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 1: Requester Information */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  Requester Information & Specifications
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {requesterSectionReadOnly
+                    ? "Read-only for current workflow stage & role"
+                    : "Fill in test specifications and recipe requirements"}
+                </p>
+              </div>
+              {requesterSectionReadOnly && (
+                <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
+                  Locked
+                </span>
+              )}
+            </div>
+
+            {reqSection && (
               <RequesterInfoSection
                 section={reqSection}
                 data={requesterData}
@@ -386,63 +347,119 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
                 onChange={handleRequesterChange}
                 onAutofillApply={handleAutofillApply}
               />
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* Section 2 - PSF Created Information */}
-          {psfSection && (
-            <div
-              style={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                padding: 20,
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  marginBottom: 16,
-                  paddingBottom: 10,
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                2. PSF Created Information
-              </h2>
+          {/* Section 2: PSF Created Output Section */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  PSF Setup Output & Configuration
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {psfSectionReadOnly
+                    ? "Editable by Setup Owners (GNTC/MFG) during Setup In Progress"
+                    : "Provide generated PSF file name and repository links"}
+                </p>
+              </div>
+              {psfSectionReadOnly && (
+                <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
+                  Setup Owner Only
+                </span>
+              )}
+            </div>
+
+            {psfSection && (
               <PSFCreatedSection
                 section={psfSection}
                 data={psfCreatedData}
-                status={req.status}
-                userRole={currentUser?.role ?? "requester"}
                 readOnly={psfSectionReadOnly}
                 onChange={handlePsfChange}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Sidebar - recent history */}
-        <div
-          style={{
-            width: 280,
-            flexShrink: 0,
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: 16,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700 }}>Recent Activity</h3>
-            <button
-              onClick={() => onNavigate(`/requests/${req.id}/history`)}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--primary)", fontSize: 12 }}
-            >
-              View all
-            </button>
+        {/* Right Column (1/3): Action Center & Audit Timeline */}
+        <div className="space-y-6">
+          {/* Action Center Card */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Action Center
+              </h3>
+              <span className="text-[11px] text-accent font-medium">Workflow Engine</span>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">Current Lifecycle Status</div>
+                <div className="flex items-center justify-between">
+                  <StatusDropdown
+                    requestId={req.id}
+                    currentStatus={req.status}
+                    onChanged={handleSave}
+                  />
+                </div>
+              </div>
+
+              {/* Assignment Information */}
+              <div className="p-3 bg-secondary/50 rounded-lg border border-border space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Setup Owner</span>
+                  <span className="font-semibold text-foreground">
+                    {req.setupOwnerName || "Not assigned"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Department</span>
+                  <span className="font-semibold text-foreground">
+                    {req.setupOwnerRole || "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Request Date</span>
+                  <span className="font-medium text-foreground">{req.requestDate || "—"}</span>
+                </div>
+              </div>
+
+              {/* Quick Workflow Action Shortcuts */}
+              {isSetupOwner && req.status === "SUBMITTED" && (
+                <button
+                  onClick={() => changeStatus(req.id, "SETUP_IN_PROGRESS")}
+                  className="w-full btn-primary text-xs py-2 shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>Accept & Start Setup</span>
+                </button>
+              )}
+
+              {isSetupOwner && req.status === "SETUP_IN_PROGRESS" && (
+                <button
+                  onClick={() => changeStatus(req.id, "COMPLETED")}
+                  className="w-full btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Mark Setup Completed</span>
+                </button>
+              )}
+            </div>
           </div>
-          <AuditTimeline logs={logs.slice(0, 5)} compact />
+
+          {/* Live Activity & Audit Timeline Feed */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <History size={13} />
+                <span>Audit History</span>
+              </h3>
+              <span className="text-[11px] bg-secondary px-2 py-0.5 rounded-full text-muted-foreground font-semibold">
+                {logs.length} events
+              </span>
+            </div>
+
+            <AuditTimeline logs={logs} />
+          </div>
         </div>
       </div>
     </div>

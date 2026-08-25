@@ -1,144 +1,131 @@
-import { PSFRequest, RequestStatus } from "../../mock/mockRequests";
-import { FileText, Clock, Wrench, CheckSquare, CheckCircle, AlertTriangle } from "lucide-react";
+import React from "react";
+import { PSFRequest } from "../../mock/mockRequests";
+import { MockUser } from "../../mock/mockUsers";
+import {
+  FileText,
+  Clock,
+  Wrench,
+  AlertTriangle,
+  CheckCircle2,
+  Filter,
+} from "lucide-react";
+
+export type CardFilterType = "MY_OPEN" | "SUBMITTED" | "SETUP_IN_PROGRESS" | "OVERDUE" | null;
 
 interface SummaryCardsProps {
   requests: PSFRequest[];
-  onFilter: (status: RequestStatus | null) => void;
-  activeFilter: RequestStatus | null;
+  currentUser?: MockUser | null;
+  onFilter: (filter: CardFilterType) => void;
+  activeFilter: CardFilterType;
 }
 
-interface CardConfig {
-  label: string;
-  status: RequestStatus | null;
-  count: number;
-  icon: React.ReactNode;
-  bg: string;
-  color: string;
-}
-
-export function SummaryCards({ requests, onFilter, activeFilter }: SummaryCardsProps) {
+export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: SummaryCardsProps) {
   const today = new Date().toISOString().split("T")[0];
+  const terminalStatuses = ["COMPLETED", "CANCELLED", "REJECTED"];
 
   const counts = {
-    total: requests.length,
+    myOpen: requests.filter((r) => {
+      const isOpen = !terminalStatuses.includes(r.status);
+      if (!isOpen) return false;
+      if (!currentUser || currentUser.role === "admin") return true;
+      if (currentUser.role === "setup_owner") {
+        return r.setupOwner === currentUser.username || r.requester === currentUser.username;
+      }
+      return r.requester === currentUser.username;
+    }).length,
     submitted: requests.filter((r) => r.status === "SUBMITTED").length,
     inProgress: requests.filter((r) => r.status === "SETUP_IN_PROGRESS").length,
-    psfCreated: requests.filter((r) => r.status === "PSF_CREATED").length,
-    completed: requests.filter((r) => r.status === "COMPLETED").length,
     overdue: requests.filter(
-      (r) =>
-        r.dueDate < today &&
-        !["COMPLETED", "CANCELLED", "REJECTED"].includes(r.status)
+      (r) => r.dueDate < today && !terminalStatuses.includes(r.status)
     ).length,
   };
 
-  const cards: CardConfig[] = [
+  const cards = [
     {
-      label: "Total Requests",
-      status: null,
-      count: counts.total,
-      icon: <FileText size={20} />,
-      bg: "#f0f4ff",
-      color: "#3b5bdb",
+      key: "MY_OPEN" as const,
+      label: "My Open Requests",
+      description: "Active requests assigned or submitted by you",
+      count: counts.myOpen,
+      icon: <FileText size={20} className="text-blue-600 dark:text-blue-400" />,
+      bgIcon: "bg-blue-50 dark:bg-blue-950/60 border-blue-100 dark:border-blue-900/50",
+      activeBorder: "border-blue-500 ring-2 ring-blue-500/20",
+      countColor: "text-blue-600 dark:text-blue-400",
     },
     {
+      key: "SUBMITTED" as const,
       label: "Waiting for Setup",
-      status: "SUBMITTED",
+      description: "Submitted and awaiting setup owner pickup",
       count: counts.submitted,
-      icon: <Clock size={20} />,
-      bg: "#fff4e5",
-      color: "#e67700",
+      icon: <Clock size={20} className="text-amber-600 dark:text-amber-400" />,
+      bgIcon: "bg-amber-50 dark:bg-amber-950/60 border-amber-100 dark:border-amber-900/50",
+      activeBorder: "border-amber-500 ring-2 ring-amber-500/20",
+      countColor: "text-amber-600 dark:text-amber-400",
     },
     {
+      key: "SETUP_IN_PROGRESS" as const,
       label: "Setup In Progress",
-      status: "SETUP_IN_PROGRESS",
+      description: "Currently in engineering setup workflow",
       count: counts.inProgress,
-      icon: <Wrench size={20} />,
-      bg: "#fef3c7",
-      color: "#b45309",
+      icon: <Wrench size={20} className="text-indigo-600 dark:text-indigo-400" />,
+      bgIcon: "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-100 dark:border-indigo-900/50",
+      activeBorder: "border-indigo-500 ring-2 ring-indigo-500/20",
+      countColor: "text-indigo-600 dark:text-indigo-400",
     },
     {
-      label: "PSF Created",
-      status: "PSF_CREATED",
-      count: counts.psfCreated,
-      icon: <CheckSquare size={20} />,
-      bg: "#d1fae5",
-      color: "#065f46",
-    },
-    {
-      label: "Completed",
-      status: "COMPLETED",
-      count: counts.completed,
-      icon: <CheckCircle size={20} />,
-      bg: "#dcfce7",
-      color: "#15803d",
-    },
-    {
-      label: "Overdue",
-      status: null,
+      key: "OVERDUE" as const,
+      label: "Overdue Actions",
+      description: "Past target due date and not completed",
       count: counts.overdue,
-      icon: <AlertTriangle size={20} />,
-      bg: "#fee2e2",
-      color: "#991b1b",
+      icon: <AlertTriangle size={20} className="text-rose-600 dark:text-rose-400" />,
+      bgIcon: "bg-rose-50 dark:bg-rose-950/60 border-rose-100 dark:border-rose-900/50",
+      activeBorder: "border-rose-500 ring-2 ring-rose-500/20",
+      countColor: "text-rose-600 dark:text-rose-400",
     },
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-        gap: 16,
-        marginBottom: 24,
-      }}
-    >
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {cards.map((card) => {
-        const isActive = activeFilter === card.status && card.status !== null;
+        const isActive = activeFilter === card.key;
         return (
           <button
-            key={card.label}
-            onClick={() =>
-              card.status !== null ? onFilter(isActive ? null : card.status) : undefined
-            }
-            style={{
-              background: "var(--card)",
-              border: `2px solid ${isActive ? card.color : "var(--border)"}`,
-              borderRadius: "var(--radius)",
-              padding: "16px",
-              cursor: card.status !== null ? "pointer" : "default",
-              textAlign: "left",
-              transition: "border-color 0.15s",
-            }}
+            key={card.key}
+            onClick={() => onFilter(isActive ? null : card.key)}
+            className={`glass-panel p-4 text-left transition-all duration-200 relative group cursor-pointer ${
+              isActive
+                ? `${card.activeBorder} bg-card shadow-md`
+                : "hover:border-border-strong hover:shadow-md"
+            }`}
           >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--radius)",
-                background: card.bg,
-                color: card.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 10,
-              }}
-            >
-              {card.icon}
+            {/* Top row: Icon & Filter indicator */}
+            <div className="flex items-center justify-between mb-3">
+              <div
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-transform group-hover:scale-105 ${card.bgIcon}`}
+              >
+                {card.icon}
+              </div>
+              {isActive ? (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-light px-2 py-0.5 rounded-full border border-accent/20">
+                  <CheckCircle2 size={11} /> Filter Active
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  <Filter size={11} /> Filter
+                </span>
+              )}
             </div>
-            <div
-              style={{ fontSize: 26, fontWeight: 700, color: card.color, lineHeight: 1 }}
-            >
+
+            {/* Metric Number */}
+            <div className={`text-2xl font-bold tracking-tight ${card.countColor}`}>
               {card.count}
             </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--muted-foreground)",
-                marginTop: 4,
-                lineHeight: 1.3,
-              }}
-            >
+
+            {/* Label */}
+            <div className="text-xs font-semibold text-foreground mt-1">
               {card.label}
+            </div>
+            <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+              {card.description}
             </div>
           </button>
         );

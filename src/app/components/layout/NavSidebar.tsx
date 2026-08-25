@@ -1,46 +1,20 @@
-import { LayoutDashboard, FileText, History, Settings, ChevronRight } from "lucide-react";
-
-interface NavItem {
-  label: string;
-  path: string;
-  icon: React.ReactNode;
-  roles: string[];
-  children?: { label: string; path: string }[];
-}
-
-const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Dashboard",
-    path: "/dashboard",
-    icon: <LayoutDashboard size={18} />,
-    roles: ["requester", "setup_owner", "admin"],
-  },
-  {
-    label: "PSF Requests",
-    path: "/requests",
-    icon: <FileText size={18} />,
-    roles: ["requester", "setup_owner", "admin"],
-  },
-  {
-    label: "History",
-    path: "/history",
-    icon: <History size={18} />,
-    roles: ["requester", "setup_owner", "admin"],
-  },
-  {
-    label: "Admin",
-    path: "/admin",
-    icon: <Settings size={18} />,
-    roles: ["admin"],
-    children: [
-      { label: "Users & Roles", path: "/admin/users" },
-      { label: "Form Config", path: "/admin/form-config" },
-      { label: "Workflow", path: "/admin/workflow" },
-      { label: "Auto-fill Rules", path: "/admin/autofill" },
-      { label: "Export Profile", path: "/admin/export-profile" },
-    ],
-  },
-];
+import React from "react";
+import {
+  LayoutDashboard,
+  FileText,
+  History,
+  Settings,
+  ChevronRight,
+  PlusCircle,
+  FileSpreadsheet,
+  Users,
+  Sliders,
+  GitBranch,
+  Wand2,
+  Download,
+  Cpu,
+} from "lucide-react";
+import { useApp } from "../../context/AppContext";
 
 interface NavSidebarProps {
   currentPath: string;
@@ -49,104 +23,215 @@ interface NavSidebarProps {
 }
 
 export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const { requests, currentUser } = useApp();
+
+  // Count active requests for badges
+  const myOpenCount = requests.filter((r) => {
+    const isClosed = ["COMPLETED", "CANCELLED", "REJECTED"].includes(r.status);
+    if (isClosed) return false;
+    if (role === "admin") return true;
+    if (role === "setup_owner") {
+      return r.setupOwner === currentUser?.username || r.requester === currentUser?.username;
+    }
+    return r.requester === currentUser?.username;
+  }).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "0 0 16px 0" }}>
-      {/* Logo */}
-      <div
-        style={{
-          padding: "18px 20px 16px",
-          borderBottom: "1px solid var(--sidebar-border)",
-          marginBottom: 8,
-        }}
-      >
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--sidebar-foreground)" }}>
-          PSF Request
-        </div>
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-          Setup File Management
+    <aside className="flex flex-col h-full bg-sidebar text-sidebar-foreground select-none">
+      {/* Brand Header */}
+      <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <Cpu size={20} className="stroke-[2.2]" />
+          </div>
+          <div>
+            <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
+              <span>PSF Portal</span>
+              <span className="text-[10px] font-semibold bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded border border-sky-500/30">
+                v2.0
+              </span>
+            </div>
+            <div className="text-[11px] text-sidebar-muted font-normal">
+              Setup File Management
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Nav items */}
-      <nav style={{ flex: 1, padding: "0 8px" }}>
-        {visibleItems.map((item) => {
-          const isActive =
-            currentPath === item.path || currentPath.startsWith(item.path + "/");
-          const hasChildren = item.children && item.children.length > 0;
+      {/* Navigation Sections */}
+      <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+        {/* Main Section */}
+        <div>
+          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-muted">
+            Overview
+          </div>
+          <nav className="space-y-1">
+            <button
+              onClick={() => onNavigate("/dashboard")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                currentPath === "/dashboard"
+                  ? "bg-accent text-white shadow-sm font-semibold"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <LayoutDashboard size={16} />
+                <span>Dashboard</span>
+              </div>
+              {myOpenCount > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    currentPath === "/dashboard"
+                      ? "bg-white text-accent"
+                      : "bg-sidebar-accent text-sidebar-muted"
+                  }`}
+                >
+                  {myOpenCount}
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
 
-          return (
-            <div key={item.path}>
+        {/* Requests Management Section */}
+        <div>
+          <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-muted">
+            Requests & Workflow
+          </div>
+          <nav className="space-y-1">
+            <button
+              onClick={() => onNavigate("/requests")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                currentPath === "/requests"
+                  ? "bg-accent text-white shadow-sm font-semibold"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <FileText size={16} />
+                <span>All PSF Requests</span>
+              </div>
+              <span className="text-[10px] text-sidebar-muted">{requests.length}</span>
+            </button>
+
+            {(role === "requester" || role === "admin") && (
               <button
-                onClick={() => onNavigate(item.path)}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "9px 12px",
-                  borderRadius: "var(--radius)",
-                  border: "none",
-                  cursor: "pointer",
-                  background: isActive ? "var(--sidebar-accent)" : "none",
-                  color: isActive
-                    ? "var(--sidebar-accent-foreground)"
-                    : "var(--sidebar-foreground)",
-                  fontSize: 14,
-                  fontWeight: isActive ? 500 : 400,
-                  textAlign: "left",
-                  marginBottom: 2,
-                  transition: "background 0.15s",
-                }}
+                onClick={() => onNavigate("/requests/new")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/requests/new"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
               >
-                <span style={{ opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-                {hasChildren && <ChevronRight size={14} style={{ opacity: 0.5 }} />}
+                <PlusCircle size={16} />
+                <span>Create Request</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onNavigate("/requests/export")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                currentPath === "/requests/export"
+                  ? "bg-accent text-white shadow-sm font-semibold"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+              }`}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Export to Excel</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate("/history")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                currentPath === "/history"
+                  ? "bg-accent text-white shadow-sm font-semibold"
+                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+              }`}
+            >
+              <History size={16} />
+              <span>Audit History</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Administration Section */}
+        {role === "admin" && (
+          <div>
+            <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-muted">
+              Administration
+            </div>
+            <nav className="space-y-1">
+              <button
+                onClick={() => onNavigate("/admin/users")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/admin/users" || currentPath === "/admin"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
+              >
+                <Users size={16} />
+                <span>Users & Roles</span>
               </button>
 
-              {/* Sub-nav for Admin */}
-              {hasChildren && isActive && (
-                <div style={{ marginLeft: 16, marginBottom: 4 }}>
-                  {item.children!.map((child) => {
-                    const childActive = currentPath === child.path;
-                    return (
-                      <button
-                        key={child.path}
-                        onClick={() => onNavigate(child.path)}
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          padding: "7px 12px",
-                          borderRadius: "var(--radius)",
-                          border: "none",
-                          cursor: "pointer",
-                          background: childActive ? "var(--sidebar-accent)" : "none",
-                          color: childActive
-                            ? "var(--sidebar-accent-foreground)"
-                            : "var(--muted-foreground)",
-                          fontSize: 13,
-                          fontWeight: childActive ? 500 : 400,
-                          textAlign: "left",
-                          marginBottom: 2,
-                        }}
-                      >
-                        {child.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </nav>
+              <button
+                onClick={() => onNavigate("/admin/form-config")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/admin/form-config"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
+              >
+                <Sliders size={16} />
+                <span>Form Schema Config</span>
+              </button>
 
-      {/* Bottom version */}
-      <div style={{ padding: "0 20px", fontSize: 11, color: "var(--muted-foreground)" }}>
-        v2.0 · Form Schema v{2}
+              <button
+                onClick={() => onNavigate("/admin/workflow")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/admin/workflow"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
+              >
+                <GitBranch size={16} />
+                <span>Workflow Transitions</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate("/admin/autofill")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/admin/autofill"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
+              >
+                <Wand2 size={16} />
+                <span>Auto-fill Rules</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate("/admin/export-profile")}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  currentPath === "/admin/export-profile"
+                    ? "bg-accent text-white shadow-sm font-semibold"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
+                }`}
+              >
+                <Download size={16} />
+                <span>Export Profiles</span>
+              </button>
+            </nav>
+          </div>
+        )}
       </div>
-    </div>
+
+      {/* Bottom info footer */}
+      <div className="p-3 border-t border-sidebar-border bg-sidebar/50">
+        <div className="text-[11px] text-sidebar-muted flex items-center justify-between px-1">
+          <span>Schema v2.0 Active</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500" title="Connected & Live" />
+        </div>
+      </div>
+    </aside>
   );
 }

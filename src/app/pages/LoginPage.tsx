@@ -1,7 +1,18 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { MOCK_USERS } from "../mock/mockUsers";
-import { Lock, User, Eye, EyeOff } from "lucide-react";
+import {
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  Cpu,
+  ArrowRight,
+  Shield,
+  Layers,
+  UserCheck,
+  Sparkles,
+} from "lucide-react";
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -21,7 +32,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     if (ok) {
       onLogin();
     } else {
-      setError("Invalid username or password.");
+      setError("Invalid username or password. You can also use quick login below.");
     }
   };
 
@@ -30,228 +41,131 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     if (ok) onLogin();
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px 10px 40px",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius)",
-    fontSize: 14,
-    background: "var(--input-background)",
-    color: "var(--foreground)",
-    outline: "none",
-    boxSizing: "border-box",
-  };
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--background)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 440 }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 14,
-              background: "var(--primary)",
-              color: "var(--primary-foreground)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
-            }}
-          >
-            <Lock size={24} />
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 sm:p-6 transition-colors">
+      <div className="w-full max-w-lg space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/25">
+            <Cpu size={30} className="stroke-[2.2]" />
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-            PSF Request System
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+            PSF Request Portal
           </h1>
-          <p style={{ fontSize: 14, color: "var(--muted-foreground)" }}>
-            Sign in to manage PSF Setup File requests
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto">
+            Probecard Setup File Request, Recipe Lifecycle & Workflow System
           </p>
         </div>
 
-        {/* Form card */}
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: 28,
-            marginBottom: 20,
-          }}
-        >
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 }}>
-                Username
-              </label>
-              <div style={{ position: "relative" }}>
+        {/* Form Card */}
+        <div className="glass-panel p-6 sm:p-7 space-y-5 bg-card shadow-lg">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Username</label>
+              <div className="relative">
                 <User
                   size={16}
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--muted-foreground)",
-                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                 />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  style={inputStyle}
+                  placeholder="e.g. requester01, setup_gntc01, admin01"
+                  className="input-base pl-9 text-xs"
                   autoFocus
                 />
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 }}>
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Password</label>
+              <div className="relative">
                 <Lock
                   size={16}
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: "var(--muted-foreground)",
-                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                 />
                 <input
                   type={showPass ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  style={{ ...inputStyle, paddingRight: 40 }}
+                  placeholder="Enter password (default: password)"
+                  className="input-base pl-9 pr-9 text-xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass((s) => !s)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--muted-foreground)",
-                    display: "flex",
-                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div
-                style={{
-                  background: "#fee2e2",
-                  color: "#991b1b",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius)",
-                  fontSize: 13,
-                }}
-              >
+              <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium">
                 {error}
               </div>
             )}
 
             <button
               type="submit"
-              style={{
-                width: "100%",
-                padding: "10px",
-                background: "var(--primary)",
-                color: "var(--primary-foreground)",
-                border: "none",
-                borderRadius: "var(--radius)",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                marginTop: 4,
-              }}
+              className="w-full btn-primary py-2.5 text-xs font-semibold shadow-sm flex items-center justify-center gap-2"
             >
-              Sign In
+              <span>Sign In to Portal</span>
+              <ArrowRight size={14} />
             </button>
           </form>
         </div>
 
-        {/* Quick login */}
-        <div
-          style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: 20,
-          }}
-        >
-          <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 12, fontWeight: 500 }}>
-            🧪 Prototype Quick Login — click a role to sign in
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {MOCK_USERS.map((u) => (
-              <button
-                key={u.id}
-                onClick={() => quickLogin(u)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  background: "var(--accent)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  textAlign: "left",
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: "50%",
-                    background: "var(--primary)",
-                    color: "var(--primary-foreground)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    flexShrink: 0,
-                  }}
+        {/* Quick Testing Personas */}
+        <div className="glass-panel p-5 bg-card space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-border">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Sparkles size={12} className="text-accent" />
+              <span>Instant Persona Login (For Testing)</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">Click to enter</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {MOCK_USERS.map((u) => {
+              let roleColor = "border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600";
+              let roleIcon = <UserCheck size={14} />;
+              let roleLabel = "Requester";
+
+              if (u.role === "setup_owner") {
+                roleColor = "border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/30 text-purple-600";
+                roleIcon = <Layers size={14} />;
+                roleLabel = `Setup (${u.department})`;
+              } else if (u.role === "admin") {
+                roleColor = "border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/30 text-amber-600";
+                roleIcon = <Shield size={14} />;
+                roleLabel = "Admin";
+              }
+
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => quickLogin(u)}
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border bg-secondary/40 hover:bg-secondary hover:border-border-strong text-left transition-all group cursor-pointer"
                 >
-                  {u.name.charAt(0)}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 500 }}>{u.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-                    {u.role === "setup_owner"
-                      ? `Setup File Owner · ${u.department}`
-                      : u.role === "admin"
-                      ? "Admin"
-                      : "Requester"}{" "}
-                    · @{u.username}
+                  <div
+                    className={`w-7 h-7 rounded-full border flex items-center justify-center shrink-0 ${roleColor}`}
+                  >
+                    {roleIcon}
                   </div>
-                </div>
-              </button>
-            ))}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-foreground truncate group-hover:text-accent transition-colors">
+                      {u.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {roleLabel} · @{u.username}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

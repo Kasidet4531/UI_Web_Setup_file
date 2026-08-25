@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { ChevronDown, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { StatusBadge, useAllStatuses } from "./StatusBadge";
 import { useApp } from "../../context/AppContext";
 
@@ -17,7 +17,10 @@ export function StatusDropdown({ requestId, currentStatus, onChanged }: StatusDr
   const [reason, setReason] = useState("");
 
   const handleSelect = (key: string) => {
-    if (key === currentStatus) { setOpen(false); return; }
+    if (key === currentStatus) {
+      setOpen(false);
+      return;
+    }
     setConfirmTarget(key);
     setOpen(false);
     setReason("");
@@ -25,7 +28,7 @@ export function StatusDropdown({ requestId, currentStatus, onChanged }: StatusDr
 
   const handleConfirm = () => {
     if (!confirmTarget) return;
-    changeStatus(requestId, confirmTarget, reason || undefined);
+    changeStatus(requestId, confirmTarget, reason.trim() || undefined);
     setConfirmTarget(null);
     setReason("");
     onChanged?.();
@@ -33,151 +36,91 @@ export function StatusDropdown({ requestId, currentStatus, onChanged }: StatusDr
 
   return (
     <>
-      <div style={{ position: "relative", display: "inline-block" }}>
+      <div className="relative inline-block">
         <button
           onClick={() => setOpen((o) => !o)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            cursor: "pointer",
-            fontSize: 13,
-            color: "var(--foreground)",
-          }}
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded-lg text-xs font-medium transition-colors shadow-sm cursor-pointer"
         >
           <StatusBadge status={currentStatus} size="sm" />
-          <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
+          <ChevronDown size={14} className="text-muted-foreground" />
         </button>
 
         {open && (
           <>
-            <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
             <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                left: 0,
-                background: "var(--popover)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                zIndex: 50,
-                minWidth: 200,
-                maxHeight: 320,
-                overflowY: "auto",
-                padding: "4px 0",
-              }}
-            >
-              {allStatuses.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => handleSelect(s.key)}
-                  style={{
-                    width: "100%",
-                    padding: "7px 12px",
-                    background: s.key === currentStatus ? "var(--accent)" : "none",
-                    border: "none",
-                    cursor: s.key === currentStatus ? "default" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    textAlign: "left",
-                  }}
-                >
-                  <StatusBadge status={s.key} size="sm" />
-                </button>
-              ))}
+              className="fixed inset-0 z-40"
+              onClick={() => setOpen(false)}
+            />
+            <div className="absolute top-full mt-1.5 left-0 glass-panel p-1.5 z-50 min-w-[200px] shadow-xl animate-in fade-in zoom-in-95">
+              <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border mb-1">
+                Change Status
+              </div>
+              <div className="space-y-0.5 max-h-56 overflow-y-auto">
+                {allStatuses.map((s) => {
+                  const isSelected = s.key === currentStatus;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => handleSelect(s.key)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left transition-colors text-xs ${
+                        isSelected
+                          ? "bg-secondary font-semibold"
+                          : "hover:bg-secondary/70 text-foreground cursor-pointer"
+                      }`}
+                    >
+                      <StatusBadge status={s.key} size="sm" />
+                      {isSelected && <CheckCircle2 size={13} className="text-accent ml-2" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </>
         )}
       </div>
 
+      {/* Confirmation Modal */}
       {confirmTarget && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-          }}
-        >
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: "var(--radius)",
-              padding: 24,
-              width: 420,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <AlertCircle size={20} color="var(--destructive)" />
-              <span style={{ fontWeight: 600, fontSize: 16 }}>Confirm Status Change</span>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="glass-panel bg-card p-5 sm:p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-2.5 text-foreground font-semibold text-base">
+              <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center border border-amber-200 dark:border-amber-800">
+                <AlertCircle size={18} />
+              </div>
+              <span>Confirm Status Transition</span>
             </div>
-            <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginBottom: 16 }}>
-              Change status from{" "}
-              <StatusBadge status={currentStatus} size="sm" />{" "}
-              to{" "}
-              <StatusBadge status={confirmTarget} size="sm" />?
-            </p>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 13, fontWeight: 500, display: "block", marginBottom: 6 }}>
-                Reason (optional)
+
+            <div className="p-3 bg-secondary rounded-lg border border-border flex items-center justify-center gap-3 text-xs">
+              <StatusBadge status={currentStatus} size="md" />
+              <ArrowRight size={14} className="text-muted-foreground" />
+              <StatusBadge status={confirmTarget} size="md" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Transition Note / Reason <span className="text-muted-foreground font-normal">(Optional)</span>
               </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Enter reason for status change..."
+                placeholder="E.g., Setup file created in GNTC repository, verified pin maps..."
                 rows={2}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  fontSize: 13,
-                  background: "var(--input-background)",
-                  color: "var(--foreground)",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                }}
+                className="input-base text-xs"
               />
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
               <button
                 onClick={() => setConfirmTarget(null)}
-                style={{
-                  padding: "8px 16px",
-                  background: "var(--secondary)",
-                  color: "var(--secondary-foreground)",
-                  border: "none",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                }}
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirm}
-                style={{
-                  padding: "8px 16px",
-                  background: "var(--primary)",
-                  color: "var(--primary-foreground)",
-                  border: "none",
-                  borderRadius: "var(--radius)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 500,
-                }}
+                className="btn-primary"
               >
-                Confirm Change
+                Confirm Update
               </button>
             </div>
           </div>

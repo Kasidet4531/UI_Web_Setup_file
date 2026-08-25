@@ -1,4 +1,5 @@
-import { Sparkles, Pencil } from "lucide-react";
+import React from "react";
+import { Sparkles, Edit2 } from "lucide-react";
 
 interface AutofillBadgeProps {
   sourceRequestNo: string;
@@ -9,40 +10,22 @@ export function AutofillBadge({ sourceRequestNo, edited }: AutofillBadgeProps) {
   if (edited) {
     return (
       <span
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 4,
-          padding: "2px 8px",
-          background: "#fef9c3",
-          color: "#854d0e",
-          borderRadius: 20,
-          fontSize: 11,
-          fontWeight: 500,
-        }}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+        title="Auto-filled value was subsequently edited"
       >
-        <Pencil size={10} />
-        Edited by user
+        <Edit2 size={10} />
+        Edited
       </span>
     );
   }
+
   return (
     <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "2px 8px",
-        background: "#ede9fe",
-        color: "#5b21b6",
-        borderRadius: 20,
-        fontSize: 11,
-        fontWeight: 500,
-      }}
-      title={`Auto-filled from ${sourceRequestNo}`}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-sm"
+      title={`Auto-filled from reference ${sourceRequestNo}`}
     >
-      <Sparkles size={10} />
-      Auto-filled from {sourceRequestNo}
+      <Sparkles size={10} className="text-blue-500" />
+      From {sourceRequestNo}
     </span>
   );
 }
