@@ -40,6 +40,9 @@ function Router() {
     if (path === "/requests/new") {
       return <RequestFormPage onNavigate={navigate} />;
     }
+    if (path === "/requests/export") {
+      return <ExportPage onNavigate={navigate} />;
+    }
     if (segments[0] === "requests" && segments[1] && segments[2] === "history") {
       return <RequestHistoryPage requestId={segments[1]} onNavigate={navigate} />;
     }
@@ -51,9 +54,6 @@ function Router() {
     }
     if (path === "/history") {
       return <GlobalHistoryPage onNavigate={navigate} />;
-    }
-    if (path === "/requests/export") {
-      return <ExportPage onNavigate={navigate} />;
     }
     if (segments[0] === "admin") {
       const adminPage = (() => {

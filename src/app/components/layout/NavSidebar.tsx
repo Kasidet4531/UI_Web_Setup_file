@@ -14,7 +14,6 @@ import {
   Wand2,
   Download,
 } from "lucide-react";
-import { useApp } from "../../context/AppContext";
 
 interface NavSidebarProps {
   currentPath: string;
@@ -23,19 +22,6 @@ interface NavSidebarProps {
 }
 
 export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
-  const { requests, currentUser } = useApp();
-
-  // Count active requests for badges
-  const myOpenCount = requests.filter((r) => {
-    const isClosed = ["COMPLETED", "CANCELLED", "REJECTED"].includes(r.status);
-    if (isClosed) return false;
-    if (role === "admin") return true;
-    if (role === "setup_owner") {
-      return r.setupOwner === currentUser?.username || r.requester === currentUser?.username;
-    }
-    return r.requester === currentUser?.username;
-  }).length;
-
   return (
     <aside className="flex flex-col h-full bg-sidebar text-sidebar-foreground select-none">
       {/* Brand Header */}
@@ -63,27 +49,14 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
           <nav className="space-y-1">
             <button
               onClick={() => onNavigate("/dashboard")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 currentPath === "/dashboard"
                   ? "bg-accent text-white shadow-sm font-semibold"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <LayoutDashboard size={16} />
-                <span>Dashboard</span>
-              </div>
-              {myOpenCount > 0 && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                    currentPath === "/dashboard"
-                      ? "bg-white text-accent"
-                      : "bg-sidebar-accent text-sidebar-muted"
-                  }`}
-                >
-                  {myOpenCount}
-                </span>
-              )}
+              <LayoutDashboard size={16} />
+              <span>Dashboard</span>
             </button>
           </nav>
         </div>
@@ -96,17 +69,14 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
           <nav className="space-y-1">
             <button
               onClick={() => onNavigate("/requests")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 currentPath === "/requests"
                   ? "bg-accent text-white shadow-sm font-semibold"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <FileText size={16} />
-                <span>All PSF Requests</span>
-              </div>
-              <span className="text-[10px] text-sidebar-muted">{requests.length}</span>
+              <FileText size={16} />
+              <span>All PSF Requests</span>
             </button>
 
             {(role === "requester" || role === "admin") && (

@@ -165,7 +165,7 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
     (s) => s.sectionKey === "requester_information"
   );
   const psfSection = effectiveSchema.sections.find(
-    (s) => s.sectionKey === "psf_created_section"
+    (s) => s.sectionKey === "psf_created_information" || s.sectionKey === "psf_created_section"
   );
 
   return (
@@ -374,6 +374,8 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
               <PSFCreatedSection
                 section={psfSection}
                 data={psfCreatedData}
+                status={req.status}
+                userRole={currentUser?.role}
                 readOnly={psfSectionReadOnly}
                 onChange={handlePsfChange}
               />
@@ -427,7 +429,7 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
               {/* Quick Workflow Action Shortcuts */}
               {isSetupOwner && req.status === "SUBMITTED" && (
                 <button
-                  onClick={() => changeStatus(req.id, "SETUP_IN_PROGRESS")}
+                  onClick={() => changeStatus(req.id, "SETUP_IN_PROGRESS", "Accepted request and started setup engineering")}
                   className="w-full btn-primary text-xs py-2 shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <span>Accept & Start Setup</span>
@@ -436,11 +438,21 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
 
               {isSetupOwner && req.status === "SETUP_IN_PROGRESS" && (
                 <button
-                  onClick={() => changeStatus(req.id, "COMPLETED")}
+                  onClick={() => changeStatus(req.id, "PSF_CREATED", "PSF setup file generated and ready for requester review")}
+                  className="w-full btn-primary bg-indigo-600 hover:bg-indigo-700 text-xs py-2 shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Mark PSF Created</span>
+                </button>
+              )}
+
+              {(isSetupOwner || isRequester || isAdmin) && req.status === "PSF_CREATED" && (
+                <button
+                  onClick={() => changeStatus(req.id, "COMPLETED", "Setup verified and request completed")}
                   className="w-full btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 shadow-sm flex items-center justify-center gap-1.5"
                 >
                   <CheckCircle2 size={14} />
-                  <span>Mark Setup Completed</span>
+                  <span>Mark Request Completed</span>
                 </button>
               )}
             </div>

@@ -98,7 +98,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Header with Navigation & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div className="flex items-center gap-3">

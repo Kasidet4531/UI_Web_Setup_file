@@ -106,25 +106,25 @@ export function SummaryCards({ requests, currentUser, onFilter, activeFilter }: 
                 : "border-border hover:border-border-strong hover:shadow-xs"
             }`}
           >
-            {/* Top row: Icon */}
-            <div className="flex items-center justify-between mb-3">
+            {/* Top row: Title and Icon Badge */}
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <span className="text-xs sm:text-sm font-semibold text-foreground tracking-tight leading-tight">
+                {card.label}
+              </span>
               <div
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-transform ${card.bgIcon}`}
+                className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 transition-transform shadow-2xs ${card.bgIcon}`}
               >
                 {card.icon}
               </div>
             </div>
 
             {/* Metric Number */}
-            <div className={`text-2xl font-bold tracking-tight ${card.countColor}`}>
+            <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${card.countColor}`}>
               {card.count}
             </div>
 
-            {/* Label */}
-            <div className="text-xs font-semibold text-foreground mt-1">
-              {card.label}
-            </div>
-            <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+            {/* Description */}
+            <div className="text-[11px] text-muted-foreground line-clamp-1 mt-1">
               {card.description}
             </div>
           </button>

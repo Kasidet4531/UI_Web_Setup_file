@@ -1,41 +1,23 @@
-import { useState } from "react";
-import { GripVertical, Eye, EyeOff } from "lucide-react";
-
-interface Column {
-  key: string;
-  label: string;
-  source: string;
-  enabled: boolean;
-  canonical: boolean;
-}
-
-const DEFAULT_COLUMNS: Column[] = [
-  { key: "request_no", label: "Request No.", source: "system.request_id", enabled: true, canonical: false },
-  { key: "product_type", label: "Product Type", source: "system.product_type", enabled: true, canonical: false },
-  { key: "title", label: "Title", source: "canonical.title", enabled: true, canonical: true },
-  { key: "reference_psf_name", label: "Reference PSF Name", source: "canonical.reference_psf_name", enabled: true, canonical: true },
-  { key: "probecard_name", label: "Probecard Name", source: "canonical.probecard_name", enabled: true, canonical: true },
-  { key: "psf_setup_file_name", label: "PSF Setup File Name", source: "canonical.psf_setup_file_name", enabled: true, canonical: true },
-  { key: "status", label: "Status", source: "system.status", enabled: true, canonical: false },
-  { key: "priority", label: "Priority", source: "canonical.priority", enabled: true, canonical: true },
-  { key: "due_date", label: "Due Date", source: "canonical.due_date", enabled: true, canonical: true },
-  { key: "requester", label: "Requester", source: "system.requester", enabled: true, canonical: false },
-  { key: "setup_owner", label: "Setup Owner", source: "system.setup_owner", enabled: true, canonical: false },
-  { key: "setup_owner_role", label: "Setup Owner Dept.", source: "system.setup_owner_role", enabled: true, canonical: false },
-  { key: "product", label: "Product", source: "canonical.product", enabled: false, canonical: true },
-  { key: "wafer_fab", label: "Wafer FAB", source: "canonical.wafer_fab", enabled: false, canonical: true },
-];
+import React, { useState, useEffect } from "react";
+import { useApp } from "../../context/AppContext";
+import { ExportColumn } from "../../mock/mockExportProfile";
+import { GripVertical, Eye, EyeOff, Check, RotateCcw, ShieldCheck } from "lucide-react";
 
 export function ExportProfilePage() {
-  const [columns, setColumns] = useState<Column[]>(DEFAULT_COLUMNS);
+  const { exportColumns, updateExportColumns, resetExportColumns } = useApp();
+  const [columns, setColumns] = useState<ExportColumn[]>(exportColumns);
   const [saved, setSaved] = useState(false);
   const [dragging, setDragging] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
+  useEffect(() => {
+    setColumns(exportColumns);
+  }, [exportColumns]);
+
   const toggleEnabled = (key: string) => {
-    setColumns((prev) =>
-      prev.map((c) => (c.key === key ? { ...c, enabled: !c.enabled } : c))
-    );
+    const updated = columns.map((c) => (c.key === key ? { ...c, enabled: !c.enabled } : c));
+    setColumns(updated);
+    updateExportColumns(updated);
   };
 
   const handleDragStart = (idx: number) => setDragging(idx);
@@ -53,36 +35,76 @@ export function ExportProfilePage() {
     const [removed] = next.splice(dragging, 1);
     next.splice(idx, 0, removed);
     setColumns(next);
+    updateExportColumns(next);
     setDragging(null);
     setDragOver(null);
   };
 
+  const handleSave = () => {
+    updateExportColumns(columns);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleReset = () => {
+    resetExportColumns();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
   return (
-    <div>
-      <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>
-        Configure export column order and visibility. Drag rows to reorder. Canonical key columns map across form versions.
-      </p>
-      <div
-        style={{
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
-          overflow: "hidden",
-          marginBottom: 16,
-        }}
-      >
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+        <div>
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <ShieldCheck size={18} className="text-accent" />
+            <span>Default Export Profile Configuration</span>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Configure system-wide export column order and visibility for all users. Drag rows with the grip handle to reorder.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleReset}
+            className="btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5"
+            title="Reset to default columns"
+          >
+            <RotateCcw size={13} />
+            <span>Reset Defaults</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-primary text-xs py-1.5 px-4 shadow-sm flex items-center gap-1.5"
+          >
+            {saved ? (
+              <>
+                <Check size={14} />
+                <span>Profile Saved!</span>
+              </>
+            ) : (
+              <span>Save Profile</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="glass-panel overflow-hidden bg-card border border-border rounded-lg shadow-sm">
+        <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr style={{ background: "var(--muted)" }}>
-              <th style={{ width: 36, padding: "9px 8px" }}></th>
-              <th style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>#</th>
-              <th style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>Column Label</th>
-              <th style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>Source</th>
-              <th style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>Type</th>
-              <th style={{ padding: "9px 14px", textAlign: "center", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>Enabled</th>
+            <tr className="bg-secondary/60 border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider select-none">
+              <th className="w-10 py-3 px-2 text-center"></th>
+              <th className="py-3 px-3">#</th>
+              <th className="py-3 px-3">Column Label</th>
+              <th className="py-3 px-3">Source Field</th>
+              <th className="py-3 px-3">Type</th>
+              <th className="py-3 px-3 text-center">Export Visibility</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-border/60">
             {columns.map((col, idx) => (
               <tr
                 key={col.key}
@@ -90,57 +112,51 @@ export function ExportProfilePage() {
                 onDragStart={() => handleDragStart(idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDrop={() => handleDrop(idx)}
-                onDragEnd={() => { setDragging(null); setDragOver(null); }}
-                style={{
-                  borderBottom: "1px solid var(--border)",
-                  background:
-                    dragOver === idx
-                      ? "var(--accent)"
-                      : !col.enabled
-                      ? "var(--muted)"
-                      : "var(--card)",
-                  opacity: dragging === idx ? 0.5 : 1,
-                  cursor: "grab",
+                onDragEnd={() => {
+                  setDragging(null);
+                  setDragOver(null);
                 }}
+                className={`transition-colors cursor-grab active:cursor-grabbing select-none ${
+                  dragOver === idx
+                    ? "bg-accent/20 border-accent"
+                    : !col.enabled
+                    ? "bg-muted/40 text-muted-foreground opacity-60"
+                    : "table-row-hover bg-card"
+                } ${dragging === idx ? "opacity-30" : ""}`}
               >
-                <td style={{ padding: "8px", textAlign: "center" }}>
-                  <GripVertical size={14} style={{ color: "var(--muted-foreground)" }} />
+                <td className="py-3 px-2 text-center">
+                  <GripVertical size={14} className="text-muted-foreground hover:text-foreground mx-auto" />
                 </td>
-                <td style={{ padding: "8px 14px", color: "var(--muted-foreground)", fontSize: 12 }}>
+                <td className="py-3 px-3 font-mono-code text-muted-foreground text-xs">
                   {idx + 1}
                 </td>
-                <td style={{ padding: "8px 14px", fontWeight: col.enabled ? 500 : 400, color: col.enabled ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                <td className="py-3 px-3 font-semibold text-foreground">
                   {col.label}
                 </td>
-                <td style={{ padding: "8px 14px", fontSize: 11, fontFamily: "monospace", color: "var(--muted-foreground)" }}>
+                <td className="py-3 px-3 font-mono-code text-[11px] text-muted-foreground">
                   {col.source}
                 </td>
-                <td style={{ padding: "8px 14px" }}>
+                <td className="py-3 px-3">
                   <span
-                    style={{
-                      padding: "1px 7px",
-                      background: col.canonical ? "#ede9fe" : "var(--muted)",
-                      color: col.canonical ? "#5b21b6" : "var(--muted-foreground)",
-                      borderRadius: 10,
-                      fontSize: 11,
-                      fontWeight: 500,
-                    }}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      col.canonical
+                        ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                        : "bg-secondary text-muted-foreground border border-border"
+                    }`}
                   >
                     {col.canonical ? "canonical" : "system"}
                   </span>
                 </td>
-                <td style={{ padding: "8px 14px", textAlign: "center" }}>
+                <td className="py-3 px-3 text-center">
                   <button
+                    type="button"
                     onClick={() => toggleEnabled(col.key)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: col.enabled ? "#059669" : "var(--muted-foreground)",
-                      display: "flex",
-                      alignItems: "center",
-                      margin: "0 auto",
-                    }}
+                    className={`p-1.5 rounded-md transition-colors ${
+                      col.enabled
+                        ? "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60"
+                        : "text-muted-foreground hover:bg-secondary"
+                    }`}
+                    title={col.enabled ? "Enabled in export" : "Disabled from export"}
                   >
                     {col.enabled ? <Eye size={16} /> : <EyeOff size={16} />}
                   </button>
@@ -150,21 +166,6 @@ export function ExportProfilePage() {
           </tbody>
         </table>
       </div>
-      <button
-        onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2500); }}
-        style={{
-          padding: "8px 18px",
-          background: saved ? "#d1fae5" : "var(--primary)",
-          color: saved ? "#065f46" : "var(--primary-foreground)",
-          border: "none",
-          borderRadius: "var(--radius)",
-          cursor: "pointer",
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        {saved ? "✓ Profile Saved!" : "Save Export Profile"}
-      </button>
     </div>
   );
 }

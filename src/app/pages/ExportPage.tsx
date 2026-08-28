@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { StatusBadge } from "../components/requests/StatusBadge";
 import {
@@ -6,11 +6,12 @@ import {
   Shield,
   ArrowLeft,
   FileSpreadsheet,
-  CheckCircle2,
   Calendar,
   Filter,
   Check,
   Eye,
+  Sliders,
+  RotateCcw,
 } from "lucide-react";
 
 interface ExportPageProps {
@@ -26,32 +27,23 @@ const REQUESTER_MASKED_STATUS_KEYS = [
   "CANCELLED",
 ];
 
-const AVAILABLE_COLUMNS = [
-  { id: "requestNo", label: "Request No." },
-  { id: "productType", label: "Product Type" },
-  { id: "title", label: "Title" },
-  { id: "referencePsf", label: "Reference PSF" },
-  { id: "probecard", label: "Probecard Name" },
-  { id: "psfOutput", label: "PSF Setup File" },
-  { id: "status", label: "Status" },
-  { id: "priority", label: "Priority" },
-  { id: "dueDate", label: "Due Date" },
-  { id: "requester", label: "Requester" },
-  { id: "setupOwner", label: "Setup Owner" },
-  { id: "dept", label: "Department" },
-];
-
 export function ExportPage({ onNavigate }: ExportPageProps) {
-  const { requests, currentUser, statuses } = useApp();
+  const { requests, currentUser, statuses, exportColumns } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(
-    AVAILABLE_COLUMNS.map((c) => c.id)
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(() =>
+    exportColumns.filter((c) => c.enabled).map((c) => c.key)
   );
   const [exported, setExported] = useState(false);
 
+  // Sync with system exportColumns if profile changes
+  useEffect(() => {
+    setSelectedColumns(exportColumns.filter((c) => c.enabled).map((c) => c.key));
+  }, [exportColumns]);
+
   const isRequester = currentUser?.role === "requester";
+  const isAdmin = currentUser?.role === "admin";
 
   const filtered = requests.filter((r) => {
     if (isRequester && r.requester !== currentUser?.username) return false;
@@ -61,49 +53,72 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
     return true;
   });
 
-  const toggleColumn = (id: string) => {
-    if (selectedColumns.includes(id)) {
+  const toggleColumn = (key: string) => {
+    if (selectedColumns.includes(key)) {
       if (selectedColumns.length > 1) {
-        setSelectedColumns((cols) => cols.filter((c) => c !== id));
+        setSelectedColumns((cols) => cols.filter((c) => c !== key));
       }
     } else {
-      setSelectedColumns((cols) => [...cols, id]);
+      setSelectedColumns((cols) => [...cols, key]);
     }
   };
 
-  const selectAllCols = () => setSelectedColumns(AVAILABLE_COLUMNS.map((c) => c.id));
-  const deselectAllCols = () => setSelectedColumns(["requestNo", "title", "status"]);
+  const selectAllCols = () => setSelectedColumns(exportColumns.map((c) => c.key));
+  const resetToProfileDefaults = () =>
+    setSelectedColumns(exportColumns.filter((c) => c.enabled).map((c) => c.key));
+
+  const getFieldValue = (r: (typeof requests)[number], key: string, psfMasked: boolean) => {
+    switch (key) {
+      case "request_no":
+        return r.requestNo;
+      case "product_type":
+        return r.productType;
+      case "title":
+        return r.title;
+      case "product":
+        return r.requesterData?.product || "";
+      case "wafer_fab":
+        return r.requesterData?.wafer_fab || "";
+      case "reference_psf_name":
+        return r.requesterData?.reference_psf_name || "";
+      case "probecard_name":
+        return r.requesterData?.probecard_name || "";
+      case "psf_setup_file_name":
+        return psfMasked
+          ? "N/A (Pending Setup)"
+          : r.psfCreatedData?.psf_setup_file_name || "";
+      case "status":
+        return r.status;
+      case "priority":
+        return r.priority;
+      case "due_date":
+        return r.dueDate || "";
+      case "requester":
+        return r.requesterName;
+      case "setup_owner":
+        return r.setupOwnerName || "";
+      case "setup_owner_role":
+        return r.setupOwnerRole || "";
+      default:
+        return "";
+    }
+  };
+
+  const activeColumnsInOrder = exportColumns.filter((c) => selectedColumns.includes(c.key));
 
   const handleExport = () => {
-    const rows = filtered.map((r) => {
-      const psfMasked =
-        isRequester && REQUESTER_MASKED_STATUS_KEYS.includes(r.status);
+    if (filtered.length === 0 || activeColumnsInOrder.length === 0) return;
 
+    const rows = filtered.map((r) => {
+      const psfMasked = isRequester && REQUESTER_MASKED_STATUS_KEYS.includes(r.status);
       const obj: Record<string, string> = {};
-      if (selectedColumns.includes("requestNo")) obj["Request No."] = r.requestNo;
-      if (selectedColumns.includes("productType")) obj["Product Type"] = r.productType;
-      if (selectedColumns.includes("title")) obj["Title"] = r.title;
-      if (selectedColumns.includes("referencePsf"))
-        obj["Reference PSF Name"] = r.requesterData.reference_psf_name ?? "";
-      if (selectedColumns.includes("probecard"))
-        obj["Probecard Name"] = r.requesterData.probecard_name ?? "";
-      if (selectedColumns.includes("psfOutput"))
-        obj["PSF Setup File Name"] = psfMasked
-          ? "N/A (Pending Setup)"
-          : r.psfCreatedData.psf_setup_file_name ?? "";
-      if (selectedColumns.includes("status")) obj["Status"] = r.status;
-      if (selectedColumns.includes("priority")) obj["Priority"] = r.priority;
-      if (selectedColumns.includes("dueDate")) obj["Due Date"] = r.dueDate;
-      if (selectedColumns.includes("requester")) obj["Requester"] = r.requesterName;
-      if (selectedColumns.includes("setupOwner"))
-        obj["Setup Owner"] = r.setupOwnerName ?? "";
-      if (selectedColumns.includes("dept"))
-        obj["Setup Owner Dept."] = r.setupOwnerRole ?? "";
+      activeColumnsInOrder.forEach((col) => {
+        obj[col.label] = getFieldValue(r, col.key, psfMasked);
+      });
       return obj;
     });
 
-    if (rows.length === 0) return;
-    const headers = Object.keys(rows[0]);
+    const headers = activeColumnsInOrder.map((c) => c.label);
     const csv = [
       headers.join(","),
       ...rows.map((row) =>
@@ -113,7 +128,8 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
 
     const now = new Date();
     const ts = now.toISOString().replace(/[-:T]/g, "").slice(0, 15);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    // Add UTF-8 BOM for Microsoft Excel compatibility
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -126,41 +142,54 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onNavigate("/dashboard")}
+            onClick={() => onNavigate("/requests")}
             className="btn-ghost text-xs py-1.5 px-2.5"
           >
             <ArrowLeft size={15} />
-            <span>Back to Dashboard</span>
+            <span>Back to Requests</span>
           </button>
           <span className="text-border">|</span>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
-              <FileSpreadsheet size={16} />
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs">
+              <FileSpreadsheet size={17} />
             </div>
-            <h1 className="text-base font-bold text-foreground">
+            <h1 className="text-base sm:text-lg font-bold text-foreground">
               Export PSF Requests to Excel / CSV
             </h1>
           </div>
         </div>
 
-        <button
-          onClick={handleExport}
-          disabled={filtered.length === 0}
-          className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 shadow-sm disabled:opacity-50"
-        >
-          <Download size={15} />
-          <span>{exported ? "Downloaded File!" : `Export ${filtered.length} Requests`}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => onNavigate("/admin/export-profile")}
+              className="btn-secondary text-xs py-2 px-3 shadow-2xs flex items-center gap-1.5"
+              title="Configure system-wide export profile"
+            >
+              <Sliders size={13} />
+              <span>Edit Export Profile</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleExport}
+            disabled={filtered.length === 0 || activeColumnsInOrder.length === 0}
+            className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 shadow-sm disabled:opacity-50 flex items-center gap-2"
+          >
+            <Download size={15} />
+            <span>{exported ? "Downloaded File!" : `Export ${filtered.length} Requests`}</span>
+          </button>
+        </div>
       </div>
 
       {/* Requester Masking Notice */}
       {isRequester && (
-        <div className="glass-panel p-4 bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 flex items-start gap-3 text-xs">
+        <div className="glass-panel p-4 bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 flex items-start gap-3 text-xs shadow-2xs">
           <Shield size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <div className="font-semibold text-amber-900 dark:text-amber-300">
@@ -175,7 +204,7 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
       )}
 
       {/* Export Configuration Card */}
-      <div className="glass-panel p-6 space-y-5 bg-card">
+      <div className="glass-panel p-5 sm:p-6 space-y-5 bg-card shadow-sm">
         <div className="border-b border-border pb-3">
           <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Filter size={15} className="text-accent" />
@@ -189,7 +218,7 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-base text-xs"
+              className="input-base text-xs h-10 shadow-2xs rounded-lg cursor-pointer"
             >
               <option value="">All Statuses</option>
               {statuses.map((s) => (
@@ -206,7 +235,7 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="input-base text-xs"
+              className="input-base text-xs h-10 shadow-2xs rounded-lg"
             />
           </div>
 
@@ -216,24 +245,25 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="input-base text-xs"
+              className="input-base text-xs h-10 shadow-2xs rounded-lg"
             />
           </div>
         </div>
       </div>
 
-      {/* Column Selection Card */}
-      <div className="glass-panel p-6 space-y-4 bg-card">
-        <div className="flex items-center justify-between border-b border-border pb-3">
+      {/* Column Selection Card from Active Export Profile */}
+      <div className="glass-panel p-5 sm:p-6 space-y-4 bg-card shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
           <div>
-            <h2 className="text-sm font-bold text-foreground">
-              2. Select Columns to Include
+            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Sliders size={15} className="text-accent" />
+              <span>2. Columns (Based on Active Export Profile)</span>
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Choose which specification fields will be included in the exported spreadsheet.
+              Column ordering and defaults are synchronized with the system's Export Profile settings.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs shrink-0">
             <button
               onClick={selectAllCols}
               className="btn-ghost text-xs py-1 text-accent font-medium"
@@ -242,30 +272,32 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
             </button>
             <span className="text-border">|</span>
             <button
-              onClick={deselectAllCols}
-              className="btn-ghost text-xs py-1 text-muted-foreground"
+              onClick={resetToProfileDefaults}
+              className="btn-ghost text-xs py-1 text-muted-foreground flex items-center gap-1"
+              title="Reset to profile default enabled columns"
             >
-              Reset Default
+              <RotateCcw size={12} />
+              <span>Reset to Profile Defaults</span>
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
-          {AVAILABLE_COLUMNS.map((col) => {
-            const isSelected = selectedColumns.includes(col.id);
+          {exportColumns.map((col, idx) => {
+            const isSelected = selectedColumns.includes(col.key);
             return (
               <button
-                key={col.id}
+                key={col.key}
                 type="button"
-                onClick={() => toggleColumn(col.id)}
-                className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs text-left transition-all ${
+                onClick={() => toggleColumn(col.key)}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs text-left transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-accent-light border-accent text-accent font-semibold shadow-2xs"
+                    ? "bg-accent/10 border-accent text-accent font-semibold shadow-2xs"
                     : "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary"
                 }`}
               >
                 <div
-                  className={`w-4 h-4 rounded flex items-center justify-center border ${
+                  className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
                     isSelected
                       ? "bg-accent border-accent text-white"
                       : "border-border bg-card"
@@ -273,26 +305,31 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
                 >
                   {isSelected && <Check size={11} className="stroke-[3]" />}
                 </div>
-                <span className="truncate">{col.label}</span>
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="text-muted-foreground font-mono-code mr-1.5 text-[10px]">
+                    #{idx + 1}
+                  </span>
+                  <span>{col.label}</span>
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Preview Section */}
-      <div className="glass-panel p-6 space-y-4 bg-card">
+      {/* Live Preview Section with Dynamic Profile Columns */}
+      <div className="glass-panel p-5 sm:p-6 space-y-4 bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div>
             <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Eye size={15} className="text-accent" />
-              <span>3. Live Export Preview ({filtered.length} matching rows)</span>
+              <span>3. Live Export Preview ({filtered.length} matching rows · {activeColumnsInOrder.length} columns)</span>
             </h2>
           </div>
           <button
             onClick={handleExport}
-            disabled={filtered.length === 0}
-            className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3"
+            disabled={filtered.length === 0 || activeColumnsInOrder.length === 0}
+            className="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
             <Download size={14} />
             <span>Generate File</span>
@@ -304,33 +341,47 @@ export function ExportPage({ onNavigate }: ExportPageProps) {
             No requests found matching your filter criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto border border-border rounded-lg max-h-72">
+          <div className="overflow-x-auto border border-border rounded-lg max-h-80">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
-                <tr className="bg-secondary/60 border-b border-border font-semibold text-[11px] text-muted-foreground">
-                  <th className="p-2.5 whitespace-nowrap">Request No</th>
-                  <th className="p-2.5 whitespace-nowrap">Title</th>
-                  <th className="p-2.5 whitespace-nowrap">Product</th>
-                  <th className="p-2.5 whitespace-nowrap">Probecard</th>
-                  <th className="p-2.5 whitespace-nowrap">Status</th>
-                  <th className="p-2.5 whitespace-nowrap">Requester</th>
-                  <th className="p-2.5 whitespace-nowrap">Due Date</th>
+                <tr className="bg-secondary/70 border-b border-border font-semibold text-[11px] text-muted-foreground select-none">
+                  {activeColumnsInOrder.map((col) => (
+                    <th key={col.key} className="py-2.5 px-3 whitespace-nowrap">
+                      {col.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.slice(0, 8).map((r) => (
-                  <tr key={r.id} className="hover:bg-secondary/30">
-                    <td className="p-2.5 font-mono-code font-bold">{r.requestNo}</td>
-                    <td className="p-2.5 max-w-[200px] truncate">{r.title}</td>
-                    <td className="p-2.5 whitespace-nowrap">{r.productType}</td>
-                    <td className="p-2.5 whitespace-nowrap">{r.requesterData?.probecard_name || "—"}</td>
-                    <td className="p-2.5 whitespace-nowrap">
-                      <StatusBadge status={r.status} size="sm" />
-                    </td>
-                    <td className="p-2.5 whitespace-nowrap">{r.requesterName}</td>
-                    <td className="p-2.5 whitespace-nowrap">{r.dueDate || "—"}</td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-border/60">
+                {filtered.slice(0, 10).map((r) => {
+                  const psfMasked = isRequester && REQUESTER_MASKED_STATUS_KEYS.includes(r.status);
+                  return (
+                    <tr key={r.id} className="table-row-hover">
+                      {activeColumnsInOrder.map((col) => {
+                        const val = getFieldValue(r, col.key, psfMasked);
+                        if (col.key === "status") {
+                          return (
+                            <td key={col.key} className="py-2 px-3 whitespace-nowrap">
+                              <StatusBadge status={r.status} size="sm" />
+                            </td>
+                          );
+                        }
+                        if (col.key === "request_no") {
+                          return (
+                            <td key={col.key} className="py-2 px-3 font-mono-code font-bold text-foreground whitespace-nowrap">
+                              {val}
+                            </td>
+                          );
+                        }
+                        return (
+                          <td key={col.key} className="py-2 px-3 max-w-[200px] truncate text-foreground/90 whitespace-nowrap">
+                            {val || "—"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

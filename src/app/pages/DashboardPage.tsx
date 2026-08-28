@@ -233,15 +233,6 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           onOpen={(id) => onNavigate(`/requests/${id}`)}
           userRole={currentUser?.role ?? "requester"}
         />
-
-        {/* Table Footer */}
-        <div className="p-3 border-t border-border bg-card flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing <strong className="text-foreground">{visibleRequests.length}</strong> of{" "}
-            {requests.length} total requests
-          </span>
-          <span className="text-[11px]">Click row to open details</span>
-        </div>
       </div>
     </div>
   );

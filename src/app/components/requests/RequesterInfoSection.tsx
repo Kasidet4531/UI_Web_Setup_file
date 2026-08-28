@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { SectionDef, FieldDef } from "../../mock/mockFormSchema";
 import { AutofillMeta, PSFRequest } from "../../mock/mockRequests";
 import { AutofillBadge } from "./AutofillBadge";
+import { FileUpload } from "../ui/FileUpload";
 import { useApp } from "../../context/AppContext";
 import { Sparkles, Check, X, Info } from "lucide-react";
 
@@ -85,6 +86,21 @@ export function RequesterInfoSection({
   const renderField = (field: FieldDef) => {
     const value = data[field.fieldKey] ?? "";
     const meta = getFieldMeta(field.fieldKey);
+
+    if (field.type === "file" || field.fieldKey === "attachment") {
+      return (
+        <div key={field.fieldKey} className="space-y-1.5 col-span-full">
+          <FileUpload
+            label={field.label}
+            hint={field.placeholder}
+            value={value}
+            readOnly={readOnly}
+            required={field.required}
+            onChange={(val) => handleChange(field, val)}
+          />
+        </div>
+      );
+    }
 
     let input: React.ReactNode;
 
@@ -233,7 +249,7 @@ export function RequesterInfoSection({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {section.fields
-            .filter((f) => ["title", "request_for"].includes(f.fieldKey))
+            .filter((f) => ["title", "request_for", "request_to", "priority", "request_date", "due_date"].includes(f.fieldKey))
             .map(renderField)}
         </div>
       </div>
@@ -247,20 +263,32 @@ export function RequesterInfoSection({
           {section.fields
             .filter(
               (f) =>
-                !["product_type", "title", "request_for", "description"].includes(f.fieldKey)
+                ![
+                  "product_type",
+                  "title",
+                  "request_for",
+                  "request_to",
+                  "priority",
+                  "request_date",
+                  "due_date",
+                  "description",
+                  "attachment",
+                ].includes(f.fieldKey)
             )
             .map(renderField)}
         </div>
       </div>
 
-      {/* Notes / Description */}
-      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-3">
+      {/* Notes / Description & Attachments */}
+      <div className="p-4 bg-secondary/30 rounded-xl border border-border/70 space-y-4">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          4. Special Instructions & Recipe Notes
+          4. Special Instructions & Attachments
         </div>
-        {section.fields
-          .filter((f) => f.fieldKey === "description")
-          .map(renderField)}
+        <div className="space-y-4">
+          {section.fields
+            .filter((f) => ["description", "attachment"].includes(f.fieldKey) || f.type === "file")
+            .map(renderField)}
+        </div>
       </div>
     </div>
   );

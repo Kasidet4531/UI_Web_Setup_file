@@ -1,13 +1,12 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { AuditTimeline } from "../components/history/AuditTimeline";
+import { AuditTable } from "../components/history/AuditTable";
 import { ActionType } from "../mock/mockAuditLogs";
 import {
   Search,
   History,
   X,
-  RefreshCw,
-  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 
 interface GlobalHistoryPageProps {
@@ -28,9 +27,31 @@ const ACTION_TYPES: { type: ActionType; label: string }[] = [
 
 export function GlobalHistoryPage({ onNavigate }: GlobalHistoryPageProps) {
   const { auditLogs, currentUser, requests } = useApp();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<ActionType | "">("");
   const [deptFilter, setDeptFilter] = useState("");
+
+  // Keyboard shortcut listener (Ctrl+K or / to focus search)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA" &&
+        document.activeElement?.tagName !== "SELECT"
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const visibleLogs = useMemo(() => {
     let logs = auditLogs;
@@ -51,7 +72,8 @@ export function GlobalHistoryPage({ onNavigate }: GlobalHistoryPageProps) {
           (l.changedByName ?? "").toLowerCase().includes(q) ||
           (l.fieldLabel ?? "").toLowerCase().includes(q) ||
           (l.oldValue ?? "").toLowerCase().includes(q) ||
-          (l.newValue ?? "").toLowerCase().includes(q)
+          (l.newValue ?? "").toLowerCase().includes(q) ||
+          (l.reason ?? "").toLowerCase().includes(q)
       );
     }
     if (actionFilter) logs = logs.filter((l) => l.actionType === actionFilter);
@@ -62,7 +84,11 @@ export function GlobalHistoryPage({ onNavigate }: GlobalHistoryPageProps) {
     );
   }, [auditLogs, currentUser, requests, search, actionFilter, deptFilter]);
 
-  const hasActiveFilters = Boolean(search || actionFilter || deptFilter);
+  const activeFilterCount = [
+    Boolean(search.trim()),
+    Boolean(actionFilter),
+    Boolean(deptFilter),
+  ].filter(Boolean).length;
 
   const handleClearFilters = () => {
     setSearch("");
@@ -71,17 +97,18 @@ export function GlobalHistoryPage({ onNavigate }: GlobalHistoryPageProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-            <History size={22} className="text-accent" />
-            <span>Global Audit History</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Full audit trail of field modifications, workflow transitions, and autofill actions
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0 shadow-2xs">
+            <History size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Global Audit History
+            </h1>
+          </div>
         </div>
       </div>
 
@@ -90,96 +117,105 @@ export function GlobalHistoryPage({ onNavigate }: GlobalHistoryPageProps) {
         {/* Search & Filter Toolbar */}
         <div className="p-3.5 sm:p-4 border-b border-border bg-card/60">
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1">
+            {/* Command-style Search Bar */}
+            <div className="relative flex-1 group">
               <Search
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                size={17}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-accent transition-colors pointer-events-none"
               />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by Request No, Actor, Field, or Values..."
-                className="input-base input-with-icon input-with-clear text-xs sm:text-sm h-10 shadow-2xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setSearch("");
+                    searchInputRef.current?.blur();
+                  }
+                }}
+                placeholder="Search by request no, actor, field label, value, reason..."
+                className="input-base input-with-icon input-with-clear text-xs sm:text-sm h-11 shadow-2xs border-border/80 group-focus-within:border-accent group-focus-within:ring-2 group-focus-within:ring-accent/20 transition-all rounded-lg"
               />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
-                  title="Clear search"
-                >
-                  <X size={14} />
-                </button>
-              )}
+
+              {/* Right indicators inside search bar */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {search ? (
+                  <button
+                    onClick={() => {
+                      setSearch("");
+                      searchInputRef.current?.focus();
+                    }}
+                    className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-secondary transition-colors"
+                    title="Clear search (Esc)"
+                  >
+                    <X size={14} />
+                  </button>
+                ) : (
+                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-secondary/80 border border-border rounded pointer-events-none select-none shadow-2xs">
+                    Ctrl K
+                  </kbd>
+                )}
+              </div>
             </div>
 
             {/* Dropdown Filters */}
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
               {/* Action Type */}
-              <select
-                value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value as ActionType | "")}
-                className="input-base text-xs h-10 min-w-[170px] cursor-pointer shadow-2xs"
-              >
-                <option value="">All Action Types</option>
-                {ACTION_TYPES.map((a) => (
-                  <option key={a.type} value={a.type}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative flex-1 sm:flex-initial">
+                <select
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value as ActionType | "")}
+                  className="input-base text-xs h-11 min-w-[165px] cursor-pointer shadow-2xs rounded-lg"
+                >
+                  <option value="">All Action Types</option>
+                  {ACTION_TYPES.map((a) => (
+                    <option key={a.type} value={a.type}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Department */}
-              <select
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                className="input-base text-xs h-10 min-w-[115px] cursor-pointer shadow-2xs"
-              >
-                <option value="">All Depts</option>
-                <option value="GNTC">GNTC</option>
-                <option value="MFG">MFG</option>
-              </select>
-
-              {/* Reset filter button if any filter is active */}
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="h-10 px-3 rounded-lg border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-2xs"
-                  title="Reset all filters"
+              <div className="relative flex-1 sm:flex-initial">
+                <select
+                  value={deptFilter}
+                  onChange={(e) => setDeptFilter(e.target.value)}
+                  className="input-base text-xs h-11 min-w-[115px] cursor-pointer shadow-2xs rounded-lg"
                 >
-                  <RefreshCw size={13} />
-                  <span className="hidden sm:inline">Reset</span>
-                </button>
-              )}
+                  <option value="">All Depts</option>
+                  <option value="GNTC">GNTC</option>
+                  <option value="MFG">MFG</option>
+                </select>
+              </div>
+
+              {/* Fixed Clear Filter Button */}
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                disabled={activeFilterCount === 0}
+                className={`h-11 px-3.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 shrink-0 shadow-2xs transition-all ${
+                  activeFilterCount > 0
+                    ? "border-accent/40 bg-accent text-white hover:bg-accent/90 cursor-pointer shadow-xs"
+                    : "border-border/60 bg-secondary/30 text-muted-foreground/40 cursor-not-allowed"
+                }`}
+                title={activeFilterCount > 0 ? "Clear all active filters" : "No active filters"}
+              >
+                <RotateCcw size={13} className={activeFilterCount > 0 ? "transition-transform group-hover:-rotate-45" : ""} />
+                <span className="hidden sm:inline">Clear Filter</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Activity Stream Section */}
-        <div className="p-4 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Activity Log Stream
-              </span>
-              <span className="text-[11px] font-mono-code font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">
-                {visibleLogs.length} events
-              </span>
-            </div>
-
-            <span className="text-xs text-muted-foreground">
-              Click request pill to view request details
-            </span>
-          </div>
-
-          <AuditTimeline
-            logs={visibleLogs}
-            onSelectRequest={(reqId) => onNavigate(`/requests/${reqId}`)}
-          />
-        </div>
+        {/* Audit Data Table */}
+        <AuditTable
+          logs={visibleLogs}
+          onOpenRequest={(reqId) => onNavigate(`/requests/${reqId}`)}
+        />
       </div>
     </div>
   );
 }
+

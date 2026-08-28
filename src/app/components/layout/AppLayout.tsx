@@ -60,8 +60,8 @@ export function AppLayout({ children, currentPath, onNavigate }: AppLayoutProps)
         />
 
         {/* Page Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-background scroll-smooth">
-          <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 bg-background scroll-smooth">
+          <div className="w-full space-y-6 animate-in fade-in duration-300">
             {children}
           </div>
         </main>

@@ -5,6 +5,7 @@ import { MOCK_AUDIT_LOGS, AuditLog } from "../mock/mockAuditLogs";
 import { MOCK_USER_LOGS, UserLog, UserActionType } from "../mock/mockUserLogs";
 import { ACTIVE_SCHEMA, ALL_SCHEMAS, FormSchema } from "../mock/mockFormSchema";
 import { DEFAULT_STATUSES, DEFAULT_TRANSITIONS, StatusDef, TransitionRule } from "../mock/mockStatuses";
+import { DEFAULT_EXPORT_COLUMNS, ExportColumn } from "../mock/mockExportProfile";
 
 type RequestStatus = string;
 
@@ -44,6 +45,11 @@ interface AppContextValue {
   removeStatus: (key: string) => void;
   transitions: TransitionRule[];
   setTransitions: React.Dispatch<React.SetStateAction<TransitionRule[]>>;
+
+  // Export Profile
+  exportColumns: ExportColumn[];
+  updateExportColumns: (cols: ExportColumn[]) => void;
+  resetExportColumns: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -57,6 +63,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeSchema, setActiveSchema] = useState<FormSchema>(ACTIVE_SCHEMA);
   const [statuses, setStatuses] = useState<StatusDef[]>(DEFAULT_STATUSES);
   const [transitions, setTransitions] = useState<TransitionRule[]>(DEFAULT_TRANSITIONS);
+  const [exportColumns, setExportColumns] = useState<ExportColumn[]>(DEFAULT_EXPORT_COLUMNS);
+
+  const updateExportColumns = useCallback((cols: ExportColumn[]) => {
+    setExportColumns(cols);
+  }, []);
+
+  const resetExportColumns = useCallback(() => {
+    setExportColumns(DEFAULT_EXPORT_COLUMNS);
+  }, []);
 
   const login = useCallback((username: string, password: string): boolean => {
     const user = users.find(
@@ -324,6 +339,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         removeStatus,
         transitions,
         setTransitions,
+        exportColumns,
+        updateExportColumns,
+        resetExportColumns,
       }}
     >
       {children}

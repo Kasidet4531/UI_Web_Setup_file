@@ -1,169 +1,404 @@
-import { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
-import { MockUser, UserRole, Department } from "../../mock/mockUsers";
+import { MockUser, UserRole, Department, MOCK_CORPORATE_DIRECTORY } from "../../mock/mockUsers";
 import { UserLog } from "../../mock/mockUserLogs";
 import {
-  Plus,
+  Shield,
+  ShieldCheck,
+  UserPlus,
   Trash2,
   Edit3,
   Check,
   X,
-  Shield,
-  History,
-  UserPlus,
-  Eye,
-  EyeOff,
-  ArrowRightLeft,
-  UserX,
+  Search,
+  Building2,
+  IdCard,
+  Mail,
   UserCheck,
-  RefreshCw,
+  AlertCircle,
+  History,
+  CheckCircle2,
+  Sparkles,
+  Layers,
+  ArrowRight,
+  Copy,
+  Briefcase,
+  KeyRound,
+  Filter,
 } from "lucide-react";
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  requester: "Requester",
-  setup_owner: "Setup File Owner",
-  admin: "Admin",
+const ROLE_INFO: Record<
+  UserRole,
+  { label: string; description: string; badgeClass: string; cardBorder: string }
+> = {
+  requester: {
+    label: "Requester",
+    description: "Can create PSF requests, submit test specifications, and track workflow status.",
+    badgeClass: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+    cardBorder: "hover:border-slate-400 dark:hover:border-slate-600",
+  },
+  setup_owner: {
+    label: "Setup File Owner",
+    description: "Can claim requests, input engineering parameters, and publish PSF setup files (GNTC / MFG).",
+    badgeClass: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+    cardBorder: "hover:border-blue-400 dark:hover:border-blue-600",
+  },
+  admin: {
+    label: "Admin",
+    description: "Full administrative access: user roles, dynamic form schemas, workflow rules, and export profiles.",
+    badgeClass: "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+    cardBorder: "hover:border-purple-400 dark:hover:border-purple-600",
+  },
 };
 
-const ROLE_STYLES: Record<UserRole, { bg: string; color: string }> = {
-  requester: { bg: "#f3f4f6", color: "#374151" },
-  setup_owner: { bg: "#dbeafe", color: "#1d4ed8" },
-  admin: { bg: "#fce7f3", color: "#be185d" },
+const DEPT_BADGES: Record<string, string> = {
+  GNTC: "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+  MFG: "bg-pink-50 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800",
 };
 
-const DEPT_STYLES: Record<string, { bg: string; color: string }> = {
-  GNTC: { bg: "#dbeafe", color: "#1d4ed8" },
-  MFG: { bg: "#fce7f3", color: "#be185d" },
-};
-
-const ACTION_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  USER_ADDED: { label: "User Added", icon: <UserPlus size={13} />, color: "#059669" },
-  USER_REMOVED: { label: "User Removed", icon: <UserX size={13} />, color: "#dc2626" },
-  ROLE_CHANGED: { label: "Role Changed", icon: <ArrowRightLeft size={13} />, color: "#d97706" },
-  DEPARTMENT_CHANGED: { label: "Dept. Changed", icon: <RefreshCw size={13} />, color: "#7c3aed" },
-  USER_UPDATED: { label: "User Updated", icon: <UserCheck size={13} />, color: "#0369a1" },
-};
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-GB", {
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok",
-  });
+function formatBangkokDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleString("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Asia/Bangkok",
+    });
+  } catch {
+    return iso;
+  }
 }
 
-interface UserFormState {
-  name: string;
-  username: string;
-  email: string;
-  role: UserRole;
-  department: Department;
-  password: string;
+// ─── Assign Corporate User Modal ──────────────────────────────────────────────
+
+interface AssignUserDialogProps {
+  onClose: () => void;
 }
 
-const EMPTY_FORM: UserFormState = {
-  name: "",
-  username: "",
-  email: "",
-  role: "requester",
-  department: null,
-  password: "",
-};
-
-// ─── Add User Dialog ──────────────────────────────────────────────────────────
-
-function AddUserDialog({ onClose }: { onClose: () => void }) {
-  const { addUser } = useApp();
-  const [form, setForm] = useState<UserFormState>(EMPTY_FORM);
-  const [showPass, setShowPass] = useState(false);
+function AssignUserDialog({ onClose }: AssignUserDialogProps) {
+  const { addUser, users } = useApp();
+  const [selectedDirectoryUser, setSelectedDirectoryUser] = useState<string>("");
+  const [userQuery, setUserQuery] = useState("");
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [title, setTitle] = useState("");
+  const [employeeType, setEmployeeType] = useState("Employee");
+  const [manager, setManager] = useState("");
+  const [company, setCompany] = useState("NXP Semiconductors");
+  const [role, setRole] = useState<UserRole>("requester");
+  const [department, setDepartment] = useState<Department>(null);
   const [error, setError] = useState("");
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "8px 10px",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius)",
-    fontSize: 13,
-    background: "var(--input-background)",
-    color: "var(--foreground)",
-    outline: "none",
-    boxSizing: "border-box" as const,
+  // Directory search suggestions
+  const directorySuggestions = useMemo(() => {
+    if (!userQuery.trim()) return MOCK_CORPORATE_DIRECTORY;
+    const q = userQuery.toLowerCase();
+    return MOCK_CORPORATE_DIRECTORY.filter(
+      (d) =>
+        d.user.toLowerCase().includes(q) ||
+        d.name.toLowerCase().includes(q) ||
+        d.email.toLowerCase().includes(q) ||
+        d.employeeId.toLowerCase().includes(q)
+    );
+  }, [userQuery]);
+
+  const handleSelectDirectory = (entry: (typeof MOCK_CORPORATE_DIRECTORY)[0]) => {
+    setSelectedDirectoryUser(entry.user);
+    setUsername(entry.user);
+    setName(entry.name);
+    setEmail(entry.email);
+    setEmployeeId(entry.employeeId);
+    setTitle(entry.title);
+    setEmployeeType(entry.employeeType);
+    setManager(entry.manager);
+    setCompany(entry.company);
+    setError("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) { setError("Name is required."); return; }
-    if (!form.username.trim()) { setError("Username is required."); return; }
-    if (!form.email.trim()) { setError("Email is required."); return; }
-    if (!form.password) { setError("Password is required."); return; }
-    if (form.role === "setup_owner" && !form.department) { setError("Department is required for Setup File Owner."); return; }
+    if (!name.trim()) {
+      setError("Employee full name is required.");
+      return;
+    }
+    if (!username.trim()) {
+      setError("Corporate username is required.");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Corporate email address is required.");
+      return;
+    }
+    if (users.find((u) => u.username.toLowerCase() === username.trim().toLowerCase())) {
+      setError(`User @${username.trim()} is already assigned in the system.`);
+      return;
+    }
+    if (role === "setup_owner" && !department) {
+      setError("Please select a department (GNTC or MFG) for Setup File Owner.");
+      return;
+    }
+
     addUser({
-      name: form.name.trim(),
-      username: form.username.trim().toLowerCase(),
-      email: form.email.trim(),
-      role: form.role,
-      department: form.role === "setup_owner" ? form.department : null,
-      password: form.password,
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      email: email.trim().toLowerCase(),
+      role,
+      department: role === "setup_owner" ? department : null,
+      employeeId: employeeId.trim() || `NXP-${Math.floor(10000 + Math.random() * 90000)}`,
+      employeeType,
+      title: title.trim() || "Technical Specialist",
+      manager: manager.trim() || "Department Manager",
+      company: company.trim() || "NXP Semiconductors",
+      password: "password", // mock auth fallback
     });
+
     onClose();
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "var(--card)", borderRadius: "var(--radius)", padding: 28, width: 460, boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <UserPlus size={18} style={{ color: "var(--primary)" }} />
-          <h2 style={{ fontSize: 16, fontWeight: 700 }}>Add New User</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+      <div className="glass-panel bg-card p-6 max-w-xl w-full shadow-2xl space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        {/* Modal Header */}
+        <div className="flex items-start justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-accent-light text-accent flex items-center justify-center shrink-0">
+              <UserPlus size={18} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Assign Corporate User Access</h2>
+              <p className="text-xs text-muted-foreground">
+                Grant role and department permissions to corporate employees (SSO / Active Directory)
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Full Name <span style={{ color: "var(--destructive)" }}>*</span></label>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. John Doe" style={inputStyle} autoFocus />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Username <span style={{ color: "var(--destructive)" }}>*</span></label>
-                <input type="text" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} placeholder="e.g. johndoe" style={inputStyle} />
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Email <span style={{ color: "var(--destructive)" }}>*</span></label>
-              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="john@company.com" style={inputStyle} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Role <span style={{ color: "var(--destructive)" }}>*</span></label>
-                <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole, department: null }))} style={inputStyle}>
-                  <option value="requester">Requester</option>
-                  <option value="setup_owner">Setup File Owner</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              {form.role === "setup_owner" && (
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Department <span style={{ color: "var(--destructive)" }}>*</span></label>
-                  <select value={form.department ?? ""} onChange={(e) => setForm((f) => ({ ...f, department: e.target.value as Department }))} style={inputStyle}>
-                    <option value="">Select...</option>
-                    <option value="GNTC">GNTC</option>
-                    <option value="MFG">MFG</option>
-                  </select>
-                </div>
-              )}
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 500, display: "block", marginBottom: 5 }}>Password <span style={{ color: "var(--destructive)" }}>*</span></label>
-              <div style={{ position: "relative" }}>
-                <input type={showPass ? "text" : "password"} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Initial password" style={{ ...inputStyle, paddingRight: 36 }} />
-                <button type="button" onClick={() => setShowPass((s) => !s)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex" }}>
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+
+        {/* Info Banner: SSO Auth Notice */}
+        <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-xl flex items-start gap-2.5 text-xs text-blue-800 dark:text-blue-300">
+          <ShieldCheck size={16} className="text-blue-600 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">Corporate SSO Managed:</span> Authentication is handled by
+            the company directory server. No local passwords are required or stored.
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Section 1: Quick Corporate Directory Lookup */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+              <Search size={13} className="text-accent" />
+              <span>Search Corporate Directory (Mock API)</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {directorySuggestions.map((entry) => (
+                <button
+                  key={entry.user}
+                  type="button"
+                  onClick={() => handleSelectDirectory(entry)}
+                  className={`p-2.5 text-left rounded-xl border text-xs transition-all cursor-pointer ${
+                    selectedDirectoryUser === entry.user
+                      ? "bg-accent-light border-accent text-foreground ring-1 ring-accent"
+                      : "bg-secondary/40 border-border hover:bg-secondary text-foreground"
+                  }`}
+                >
+                  <div className="font-bold flex items-center justify-between">
+                    <span>{entry.name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">@{entry.user}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">{entry.title}</div>
+                  <div className="text-[10px] text-accent font-mono mt-0.5">{entry.employeeId}</div>
                 </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 2: Employee Profile Details (Read/Editable) */}
+          <div className="p-4 bg-secondary/30 rounded-xl border border-border/80 space-y-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <IdCard size={13} />
+              <span>Employee Information</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Kasidet N."
+                  className="input-base text-xs h-9"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">
+                  Corporate Username (@) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g. nxg22301"
+                  className="input-base text-xs font-mono-code h-9"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">
+                  Corporate Email <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. kasidet.n@nxp.com"
+                  className="input-base text-xs h-9"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">Employee ID</label>
+                <input
+                  type="text"
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  placeholder="e.g. NXP-50821"
+                  className="input-base text-xs font-mono-code h-9"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">Job Title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. STUDENT INTERN TECHNICAL-SP"
+                  className="input-base text-xs h-9"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1 block">Direct Manager</label>
+                <input
+                  type="text"
+                  value={manager}
+                  onChange={(e) => setManager(e.target.value)}
+                  placeholder="e.g. David Wright"
+                  className="input-base text-xs h-9"
+                />
               </div>
             </div>
           </div>
-          {error && <div style={{ color: "var(--destructive)", fontSize: 12, marginBottom: 12 }}>{error}</div>}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={onClose} style={{ padding: "8px 16px", background: "var(--secondary)", color: "var(--secondary-foreground)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13 }}>Cancel</button>
-            <button type="submit" style={{ padding: "8px 16px", background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Add User</button>
+
+          {/* Section 3: Role & Department Assignment */}
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+              <span>System Role & Permissions <span className="text-rose-500">*</span></span>
+              <span className="text-[11px] text-muted-foreground font-normal">Select one role</span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {(["requester", "setup_owner", "admin"] as const).map((rKey) => {
+                const info = ROLE_INFO[rKey];
+                const isSelected = role === rKey;
+                return (
+                  <button
+                    key={rKey}
+                    type="button"
+                    onClick={() => {
+                      setRole(rKey);
+                      if (rKey !== "setup_owner") setDepartment(null);
+                    }}
+                    className={`p-3 text-left rounded-xl border transition-all cursor-pointer relative ${
+                      isSelected
+                        ? "bg-card border-accent ring-2 ring-accent/20 shadow-sm"
+                        : `bg-card border-border ${info.cardBorder}`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-foreground">{info.label}</span>
+                      {isSelected && (
+                        <div className="w-4 h-4 rounded-full bg-accent text-white flex items-center justify-center">
+                          <Check size={10} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed">
+                      {info.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Department Selection when Setup Owner is selected */}
+            {role === "setup_owner" && (
+              <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-xl space-y-2 animate-in fade-in">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <span>Assigned Department <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    (Determines export tracking & task routing)
+                  </span>
+                </label>
+                <div className="flex items-center gap-3">
+                  {(["GNTC", "MFG"] as const).map((dept) => (
+                    <label
+                      key={dept}
+                      className={`flex-1 inline-flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
+                        department === dept
+                          ? "bg-accent-light border-accent text-accent ring-1 ring-accent"
+                          : "bg-card border-border hover:bg-secondary text-foreground"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="assign_dept"
+                        value={dept}
+                        checked={department === dept}
+                        onChange={() => setDepartment(dept)}
+                        className="accent-accent"
+                      />
+                      <span>{dept} Department</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+            <button type="button" onClick={onClose} className="btn-secondary text-xs">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary text-xs shadow-sm">
+              <UserCheck size={14} />
+              <span>Assign User Role</span>
+            </button>
           </div>
         </form>
       </div>
@@ -171,293 +406,565 @@ function AddUserDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Main UsersPage ───────────────────────────────────────────────────────────
+// ─── Edit Role & Permissions Modal ───────────────────────────────────────────
 
-export function UsersPage() {
-  const { users, updateUser, removeUser, userLogs, currentUser } = useApp();
-  const [tab, setTab] = useState<"users" | "log">("users");
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editRole, setEditRole] = useState<UserRole>("requester");
-  const [editDept, setEditDept] = useState<Department>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<MockUser | null>(null);
-  const [search, setSearch] = useState("");
+interface EditRoleDialogProps {
+  user: MockUser;
+  onClose: () => void;
+}
 
-  const filteredUsers = users.filter(
-    (u) =>
-      !search ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-  );
+function EditRoleDialog({ user, onClose }: EditRoleDialogProps) {
+  const { updateUser } = useApp();
+  const [role, setRole] = useState<UserRole>(user.role);
+  const [department, setDepartment] = useState<Department>(user.department);
+  const [error, setError] = useState("");
 
-  const startEdit = (u: MockUser) => {
-    setEditingId(u.id);
-    setEditRole(u.role);
-    setEditDept(u.department);
-  };
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (role === "setup_owner" && !department) {
+      setError("Please select a department (GNTC or MFG) for Setup File Owner.");
+      return;
+    }
 
-  const saveEdit = (id: string) => {
-    updateUser(id, {
-      role: editRole,
-      department: editRole === "setup_owner" ? editDept : null,
+    updateUser(user.id, {
+      role,
+      department: role === "setup_owner" ? department : null,
     });
-    setEditingId(null);
-  };
 
-  const selectStyle: React.CSSProperties = {
-    padding: "5px 8px",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius)",
-    fontSize: 12,
-    background: "var(--input-background)",
-    color: "var(--foreground)",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    padding: "7px 10px",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius)",
-    fontSize: 13,
-    background: "var(--input-background)",
-    color: "var(--foreground)",
-    outline: "none",
-    width: "100%",
-    boxSizing: "border-box" as const,
+    onClose();
   };
 
   return (
-    <div>
-      {showAddDialog && <AddUserDialog onClose={() => setShowAddDialog(false)} />}
-
-      {/* Delete confirm */}
-      {deleteConfirm && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ background: "var(--card)", borderRadius: "var(--radius)", padding: 24, width: 380, boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, color: "#991b1b", fontWeight: 600 }}>
-              <Trash2 size={18} /> Remove User
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+      <div className="glass-panel bg-card p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
+        {/* Modal Header */}
+        <div className="flex items-start justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-accent-light text-accent flex items-center justify-center shrink-0">
+              <KeyRound size={18} />
             </div>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 6 }}>
-              Remove <strong>{deleteConfirm.name}</strong> (@{deleteConfirm.username})?
-            </p>
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginBottom: 16 }}>
-              This action will be logged. The user will no longer be able to log in.
-            </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ padding: "7px 14px", background: "var(--secondary)", color: "var(--secondary-foreground)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13 }}>Cancel</button>
-              <button onClick={() => { removeUser(deleteConfirm!.id); setDeleteConfirm(null); }} style={{ padding: "7px 14px", background: "#dc2626", color: "#fff", border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Remove User</button>
+            <div>
+              <h2 className="text-base font-bold text-foreground">Edit Role & Permissions</h2>
+              <p className="text-xs text-muted-foreground">
+                Manage authorization and operational department for @{user.username}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Employee Summary Card */}
+        <div className="p-4 bg-secondary/40 rounded-xl border border-border/80 flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-full bg-accent text-white font-bold text-base flex items-center justify-center shrink-0 shadow-xs">
+            {user.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-foreground truncate">{user.name}</span>
+              <span className="text-[11px] font-mono text-muted-foreground">@{user.username}</span>
+            </div>
+            <div className="text-xs text-muted-foreground truncate">{user.title || "Corporate Employee"}</div>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-1">
+              <span className="flex items-center gap-1">
+                <IdCard size={11} className="text-accent" />
+                <span className="font-mono">{user.employeeId || "NXP-00000"}</span>
+              </span>
+              <span>•</span>
+              <span className="truncate">{user.email}</span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Tab bar */}
-      <div style={{ display: "flex", gap: 2, borderBottom: "1px solid var(--border)", marginBottom: 20 }}>
-        {([
-          { key: "users", label: "Users", icon: <Shield size={14} /> },
-          { key: "log", label: `Audit Log (${userLogs.length})`, icon: <History size={14} /> },
-        ] as const).map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              display: "flex", alignItems: "center", gap: 5, padding: "8px 16px",
-              background: "none", border: "none", borderBottom: tab === t.key ? "2px solid var(--primary)" : "2px solid transparent",
-              cursor: "pointer", fontSize: 13, fontWeight: tab === t.key ? 600 : 400,
-              color: tab === t.key ? "var(--primary)" : "var(--muted-foreground)", marginBottom: -1,
-            }}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
+        <form onSubmit={handleSave} className="space-y-4">
+          {/* Role Selection */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground">
+              Select User Role <span className="text-rose-500">*</span>
+            </label>
+
+            <div className="space-y-2">
+              {(["requester", "setup_owner", "admin"] as const).map((rKey) => {
+                const info = ROLE_INFO[rKey];
+                const isSelected = role === rKey;
+                return (
+                  <button
+                    key={rKey}
+                    type="button"
+                    onClick={() => {
+                      setRole(rKey);
+                      if (rKey !== "setup_owner") setDepartment(null);
+                    }}
+                    className={`w-full p-3 text-left rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
+                      isSelected
+                        ? "bg-accent-light/30 border-accent ring-1 ring-accent/30 shadow-xs"
+                        : "bg-card border-border hover:bg-secondary/50"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected ? "bg-accent border-accent text-white" : "border-muted-foreground/40 bg-card"
+                      }`}
+                    >
+                      {isSelected && <Check size={10} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-foreground">{info.label}</div>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                        {info.description}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Department Selection (if Setup Owner) */}
+          {role === "setup_owner" && (
+            <div className="p-3.5 bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 rounded-xl space-y-2 animate-in fade-in">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Setup Owner Department <span className="text-rose-500">*</span></span>
+                <span className="text-[11px] text-muted-foreground font-normal">GNTC or MFG</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(["GNTC", "MFG"] as const).map((dept) => (
+                  <label
+                    key={dept}
+                    className={`inline-flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
+                      department === dept
+                        ? "bg-accent-light border-accent text-accent ring-1 ring-accent"
+                        : "bg-card border-border hover:bg-secondary text-foreground"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="edit_dept"
+                      value={dept}
+                      checked={department === dept}
+                      onChange={() => setDepartment(dept)}
+                      className="accent-accent"
+                    />
+                    <span>{dept}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Modal Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+            <button type="button" onClick={onClose} className="btn-secondary text-xs">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary text-xs shadow-sm">
+              <Check size={14} />
+              <span>Save Role & Permissions</span>
+            </button>
+          </div>
+        </form>
       </div>
+    </div>
+  );
+}
 
-      {tab === "users" && (
-        <div>
-          {/* Toolbar */}
-          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, username, email..."
-              style={{ ...inputStyle, width: 280, flex: "0 1 280px" }}
-            />
-            <div style={{ marginLeft: "auto" }}>
+// ─── Main UsersPage Component ─────────────────────────────────────────────────
+
+export function UsersPage() {
+  const { users, removeUser, userLogs, currentUser } = useApp();
+  const [activeTab, setActiveTab] = useState<"users" | "logs">("users");
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<MockUser | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<MockUser | null>(null);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("");
+  const [deptFilter, setDeptFilter] = useState<string>("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyEmail = (e: React.MouseEvent, emailText: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(emailText);
+    setCopiedId(emailText);
+    setTimeout(() => setCopiedId(null), 1800);
+  };
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (
+        search &&
+        !u.name.toLowerCase().includes(search.toLowerCase()) &&
+        !u.username.toLowerCase().includes(search.toLowerCase()) &&
+        !u.email.toLowerCase().includes(search.toLowerCase()) &&
+        !(u.title ?? "").toLowerCase().includes(search.toLowerCase()) &&
+        !(u.employeeId ?? "").toLowerCase().includes(search.toLowerCase())
+      ) {
+        return false;
+      }
+      if (roleFilter && u.role !== roleFilter) return false;
+      if (deptFilter && u.department !== deptFilter) return false;
+      return true;
+    });
+  }, [users, search, roleFilter, deptFilter]);
+
+  return (
+    <div className="space-y-5">
+      {showAssignDialog && <AssignUserDialog onClose={() => setShowAssignDialog(false)} />}
+      {editingUser && <EditRoleDialog user={editingUser} onClose={() => setEditingUser(null)} />}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="glass-panel bg-card p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400 font-semibold text-base">
+              <div className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center border border-rose-200 dark:border-rose-800">
+                <Trash2 size={16} />
+              </div>
+              <span>Revoke Portal Access</span>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to revoke portal permissions for{" "}
+              <strong className="text-foreground">{deleteConfirm.name}</strong> (@{deleteConfirm.username})?
+              This action will be recorded in the security audit log.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+              <button onClick={() => setDeleteConfirm(null)} className="btn-secondary text-xs">
+                Cancel
+              </button>
               <button
-                onClick={() => setShowAddDialog(true)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", background: "var(--primary)", color: "var(--primary-foreground)",
-                  border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13, fontWeight: 500,
+                onClick={() => {
+                  removeUser(deleteConfirm.id);
+                  setDeleteConfirm(null);
                 }}
+                className="btn-primary bg-rose-600 hover:bg-rose-700 text-xs shadow-sm"
               >
-                <UserPlus size={15} /> Add User
+                Revoke Access
               </button>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Users table */}
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "var(--muted)" }}>
-                  {["User", "Username", "Email", "Role", "Department", "Actions"].map((h) => (
-                    <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
-                      No users found.
-                    </td>
+      {/* Tab Navigation & Status Pill */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "users"
+                ? "bg-accent text-white shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            <Shield size={14} />
+            <span>Corporate Users ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("logs")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === "logs"
+                ? "bg-accent text-white shadow-xs"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            <History size={14} />
+            <span>Security Audit Log ({userLogs.length})</span>
+          </button>
+        </div>
+
+        <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 self-end sm:self-auto">
+          <ShieldCheck size={14} className="text-emerald-500" />
+          <span>SSO / Corporate Identity Active</span>
+        </div>
+      </div>
+
+      {/* TAB 1: USERS & ROLES */}
+      {activeTab === "users" && (
+        <div className="space-y-4">
+          {/* Toolbar: Search, Filters & Action Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-1 max-w-lg flex-wrap sm:flex-nowrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, @user, title, employee ID..."
+                  className="input-base pl-8 text-xs h-9 w-full"
+                />
+              </div>
+
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="input-base text-xs h-9 w-auto shrink-0"
+              >
+                <option value="">All Roles</option>
+                <option value="requester">Requester</option>
+                <option value="setup_owner">Setup File Owner</option>
+                <option value="admin">Admin</option>
+              </select>
+
+              <select
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="input-base text-xs h-9 w-auto shrink-0"
+              >
+                <option value="">All Depts</option>
+                <option value="GNTC">GNTC</option>
+                <option value="MFG">MFG</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setShowAssignDialog(true)}
+              className="btn-primary text-xs py-2 shadow-sm shrink-0 flex items-center gap-1.5"
+            >
+              <UserPlus size={15} />
+              <span>Assign Corporate User</span>
+            </button>
+          </div>
+
+          {/* Users Table */}
+          <div className="glass-panel overflow-hidden bg-card border border-border rounded-xl shadow-xs">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/60 border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider select-none">
+                    <th className="py-3 px-3.5">Employee & Identity</th>
+                    <th className="py-3 px-3.5">Employee ID / Org</th>
+                    <th className="py-3 px-3.5">Corporate Email</th>
+                    <th className="py-3 px-3.5">Assigned Role</th>
+                    <th className="py-3 px-3.5">Department</th>
+                    <th className="py-3 px-3.5 text-right">Role Actions</th>
                   </tr>
-                )}
-                {filteredUsers.map((u) => {
-                  const isEditing = editingId === u.id;
-                  const isSelf = u.id === currentUser?.id;
-                  const roleStyle = ROLE_STYLES[u.role];
-                  return (
-                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "10px 14px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--primary)", color: "var(--primary-foreground)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                            {u.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 500 }}>{u.name}</div>
-                            {isSelf && <div style={{ fontSize: 10, color: "#059669" }}>← You</div>}
-                          </div>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                        <div className="w-10 h-10 rounded-full bg-secondary text-muted-foreground mx-auto flex items-center justify-center mb-2">
+                          <Search size={18} />
                         </div>
+                        <div className="font-semibold text-foreground text-xs">No corporate users found</div>
+                        <div className="text-[11px] mt-0.5">Try clearing filters or search terms.</div>
                       </td>
-                      <td style={{ padding: "10px 14px", color: "var(--muted-foreground)", fontFamily: "monospace", fontSize: 12 }}>@{u.username}</td>
-                      <td style={{ padding: "10px 14px", color: "var(--muted-foreground)", fontSize: 12 }}>{u.email}</td>
-                      <td style={{ padding: "10px 14px" }}>
-                        {isEditing ? (
-                          <select value={editRole} onChange={(e) => setEditRole(e.target.value as UserRole)} style={selectStyle}>
-                            <option value="requester">Requester</option>
-                            <option value="setup_owner">Setup File Owner</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                        ) : (
-                          <span style={{ padding: "2px 9px", background: roleStyle.bg, color: roleStyle.color, borderRadius: 10, fontSize: 12, fontWeight: 500 }}>
-                            {ROLE_LABELS[u.role]}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 14px" }}>
-                        {isEditing && editRole === "setup_owner" ? (
-                          <select value={editDept ?? ""} onChange={(e) => setEditDept(e.target.value as Department)} style={selectStyle}>
-                            <option value="">Select...</option>
-                            <option value="GNTC">GNTC</option>
-                            <option value="MFG">MFG</option>
-                          </select>
-                        ) : u.department ? (
-                          <span style={{ padding: "2px 7px", background: DEPT_STYLES[u.department].bg, color: DEPT_STYLES[u.department].color, borderRadius: 8, fontSize: 11, fontWeight: 600 }}>
-                            {u.department}
-                          </span>
-                        ) : (
-                          <span style={{ color: "var(--muted-foreground)" }}>—</span>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 14px" }}>
-                        {isEditing ? (
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => saveEdit(u.id)} style={{ padding: "4px 9px", background: "#d1fae5", color: "#065f46", border: "none", borderRadius: "var(--radius)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 12 }}>
-                              <Check size={12} /> Save
-                            </button>
-                            <button onClick={() => setEditingId(null)} style={{ padding: "4px 8px", background: "var(--muted)", color: "var(--muted-foreground)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 12 }}>
-                              <X size={12} /> Cancel
+                    </tr>
+                  )}
+
+                  {filteredUsers.map((u) => {
+                    const isSelf = u.id === currentUser?.id;
+                    const roleInfo = ROLE_INFO[u.role];
+                    const deptClass = u.department ? DEPT_BADGES[u.department] : "";
+
+                    return (
+                      <tr key={u.id} className="table-row-hover transition-colors">
+                        {/* Employee & Title */}
+                        <td className="py-3 px-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-accent/90 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                              {u.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-foreground truncate max-w-[180px]">
+                                  {u.name}
+                                </span>
+                                {isSelf && (
+                                  <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
+                                    You
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                                {u.title || "Corporate User"}
+                              </div>
+                              <div className="text-[10px] font-mono text-accent">@{u.username}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Employee ID & Org */}
+                        <td className="py-3 px-3.5 whitespace-nowrap">
+                          <div className="font-mono-code font-bold text-foreground text-xs">
+                            {u.employeeId || "NXP-00000"}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Building2 size={10} />
+                            <span>{u.company || "NXP"}</span>
+                          </div>
+                        </td>
+
+                        {/* Corporate Email */}
+                        <td className="py-3 px-3.5 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                            <span className="font-mono-code text-[11px]">{u.email}</span>
+                            <button
+                              onClick={(e) => handleCopyEmail(e, u.email)}
+                              title="Copy email address"
+                              className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {copiedId === u.email ? (
+                                <Check size={12} className="text-emerald-500" />
+                              ) : (
+                                <Copy size={12} />
+                              )}
                             </button>
                           </div>
-                        ) : (
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => startEdit(u)} style={{ padding: "4px 10px", background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 12, color: "var(--muted-foreground)" }}>
-                              <Edit3 size={12} /> Edit
+                        </td>
+
+                        {/* Role Badge */}
+                        <td className="py-3 px-3.5 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${roleInfo.badgeClass}`}
+                          >
+                            {roleInfo.label}
+                          </span>
+                        </td>
+
+                        {/* Department Badge */}
+                        <td className="py-3 px-3.5 whitespace-nowrap">
+                          {u.department ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${deptClass}`}
+                            >
+                              {u.department}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground font-mono text-[11px]">—</span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setEditingUser(u)}
+                              className="btn-secondary text-[11px] py-1 px-2.5 flex items-center gap-1.5"
+                              title="Edit Role & Permissions"
+                            >
+                              <Edit3 size={12} />
+                              <span>Edit Role</span>
                             </button>
+
                             <button
                               onClick={() => setDeleteConfirm(u)}
                               disabled={isSelf}
-                              title={isSelf ? "Cannot remove your own account" : "Remove user"}
-                              style={{ padding: "4px 7px", background: isSelf ? "var(--muted)" : "#fee2e2", color: isSelf ? "var(--muted-foreground)" : "#991b1b", border: "none", borderRadius: "var(--radius)", cursor: isSelf ? "not-allowed" : "pointer", display: "flex", alignItems: "center", opacity: isSelf ? 0.5 : 1 }}
+                              title={isSelf ? "Cannot revoke your own active account" : "Revoke Access"}
+                              className={`p-1.5 rounded-md transition-colors ${
+                                isSelf
+                                  ? "opacity-30 cursor-not-allowed text-muted-foreground"
+                                  : "text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                              }`}
                             >
-                              <Trash2 size={13} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
-            {filteredUsers.length} of {users.length} users
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer */}
+            <div className="p-3 bg-secondary/30 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+              <div>
+                Showing {filteredUsers.length} of {users.length} corporate users
+              </div>
+              <div className="text-[11px]">
+                Role changes are audited automatically with GMT+7 timestamps.
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {tab === "log" && (
-        <div>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 16 }}>
-            All user management actions are logged here for traceability.
-          </p>
-          <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "var(--muted)" }}>
-                  {["Time (GMT+7)", "Action", "User Affected", "Change", "Performed By", "Note"].map((h) => (
-                    <th key={h} style={{ padding: "9px 14px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {userLogs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: 32, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>No user activity logged yet.</td>
+      {/* TAB 2: AUDIT LOG */}
+      {activeTab === "logs" && (
+        <div className="space-y-4">
+          <div className="p-3 bg-secondary/30 rounded-xl border border-border text-xs text-muted-foreground flex items-center justify-between">
+            <span>Security audit trail for all role assignments, department shifts, and access changes.</span>
+            <span className="font-mono text-[11px]">{userLogs.length} total entries</span>
+          </div>
+
+          <div className="glass-panel overflow-hidden bg-card border border-border rounded-xl shadow-xs">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-secondary/60 border-b border-border text-muted-foreground font-semibold text-[11px] uppercase tracking-wider select-none">
+                    <th className="py-3 px-3.5">Timestamp (GMT+7)</th>
+                    <th className="py-3 px-3.5">Action</th>
+                    <th className="py-3 px-3.5">Affected User</th>
+                    <th className="py-3 px-3.5">Permission Transition</th>
+                    <th className="py-3 px-3.5">Performed By</th>
                   </tr>
-                )}
-                {userLogs.map((log) => {
-                  const cfg = ACTION_CONFIG[log.actionType] ?? { label: log.actionType, icon: null, color: "#6b7280" };
-                  return (
-                    <tr key={log.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "9px 14px", whiteSpace: "nowrap", color: "var(--muted-foreground)", fontSize: 12 }}>
-                        {formatDate(log.performedAt)}
-                      </td>
-                      <td style={{ padding: "9px 14px", whiteSpace: "nowrap" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 9px", background: cfg.color + "18", color: cfg.color, borderRadius: 10, fontSize: 12, fontWeight: 600 }}>
-                          {cfg.icon} {cfg.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: "9px 14px", fontWeight: 500 }}>
-                        {log.targetUserName}
-                      </td>
-                      <td style={{ padding: "9px 14px", fontSize: 12 }}>
-                        {log.oldValue && (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                            <span style={{ background: "#fee2e2", color: "#991b1b", padding: "1px 7px", borderRadius: 4, textDecoration: "line-through" }}>{log.oldValue}</span>
-                            {log.newValue && <span style={{ color: "var(--muted-foreground)" }}>→</span>}
-                          </span>
-                        )}
-                        {log.newValue && (
-                          <span style={{ background: "#d1fae5", color: "#065f46", padding: "1px 7px", borderRadius: 4, marginLeft: log.oldValue ? 4 : 0 }}>{log.newValue}</span>
-                        )}
-                        {!log.oldValue && !log.newValue && <span style={{ color: "var(--muted-foreground)" }}>—</span>}
-                      </td>
-                      <td style={{ padding: "9px 14px", color: "var(--muted-foreground)", fontSize: 12 }}>
-                        {log.performedByName}
-                      </td>
-                      <td style={{ padding: "9px 14px", color: "var(--muted-foreground)", fontSize: 12, fontStyle: "italic" }}>
-                        {log.note ?? "—"}
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {userLogs.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-muted-foreground">
+                        No user role changes recorded yet.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  )}
+
+                  {userLogs.map((log) => (
+                    <tr key={log.id} className="table-row-hover transition-colors">
+                      <td className="py-3 px-3.5 whitespace-nowrap font-mono-code text-[11px] text-muted-foreground">
+                        {formatBangkokDate(log.performedAt)}
+                      </td>
+                      <td className="py-3 px-3.5 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-light text-accent border border-accent/30">
+                          {log.actionType}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3.5 font-bold text-foreground whitespace-nowrap">
+                        {log.targetUserName}
+                      </td>
+                      <td className="py-3 px-3.5 text-xs whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          {log.oldValue && (
+                            <span className="bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 line-through px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 text-[11px]">
+                              {log.oldValue}
+                            </span>
+                          )}
+                          {log.oldValue && log.newValue && (
+                            <ArrowRight size={12} className="text-muted-foreground" />
+                          )}
+                          {log.newValue && (
+                            <span className="bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 text-[11px]">
+                              {log.newValue}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3.5 whitespace-nowrap text-muted-foreground">
+                        <span className="font-semibold text-foreground">{log.performedByName}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

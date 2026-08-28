@@ -1,6 +1,7 @@
 import React from "react";
 import { SectionDef, FieldDef } from "../../mock/mockFormSchema";
 import { RequestStatus } from "../../mock/mockRequests";
+import { FileUpload } from "../ui/FileUpload";
 import { Lock, CheckCircle, FileCode, Check } from "lucide-react";
 
 interface PSFCreatedSectionProps {
@@ -45,6 +46,21 @@ export function PSFCreatedSection({
 
   const renderField = (field: FieldDef) => {
     const value = data[field.fieldKey] ?? "";
+
+    if (field.type === "file" || field.fieldKey === "attachment") {
+      return (
+        <div key={field.fieldKey} className="space-y-1.5 col-span-full">
+          <FileUpload
+            label={field.label}
+            hint={field.placeholder}
+            value={value}
+            readOnly={readOnly}
+            required={field.required}
+            onChange={(val) => onChange(field.fieldKey, val)}
+          />
+        </div>
+      );
+    }
 
     let input: React.ReactNode;
     if (field.type === "select" && field.options) {
