@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { RequesterInfoSection } from "../components/requests/RequesterInfoSection";
-import { PSFCreatedSection } from "../components/requests/PSFCreatedSection";
+import { DynamicFormRenderer } from "../components/requests/DynamicFormRenderer";
 import { StatusDropdown } from "../components/requests/StatusDropdown";
 import { StatusBadge } from "../components/requests/StatusBadge";
 import { WorkflowStepper } from "../components/requests/WorkflowStepper";
@@ -318,69 +317,19 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
             </div>
           </div>
 
-          {/* Section 1: Requester Information */}
-          <div className="glass-panel p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  Requester Information & Specifications
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {requesterSectionReadOnly
-                    ? "Read-only for current workflow stage & role"
-                    : "Fill in test specifications and recipe requirements"}
-                </p>
-              </div>
-              {requesterSectionReadOnly && (
-                <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
-                  Locked
-                </span>
-              )}
-            </div>
-
-            {reqSection && (
-              <RequesterInfoSection
-                section={reqSection}
-                data={requesterData}
-                readOnly={requesterSectionReadOnly}
-                autofillMeta={autofillMeta}
-                onChange={handleRequesterChange}
-                onAutofillApply={handleAutofillApply}
-              />
-            )}
-          </div>
-
-          {/* Section 2: PSF Created Output Section */}
-          <div className="glass-panel p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  PSF Setup Output & Configuration
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {psfSectionReadOnly
-                    ? "Editable by Setup Owners (GNTC/MFG) during Setup In Progress"
-                    : "Provide generated PSF file name and repository links"}
-                </p>
-              </div>
-              {psfSectionReadOnly && (
-                <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
-                  Setup Owner Only
-                </span>
-              )}
-            </div>
-
-            {psfSection && (
-              <PSFCreatedSection
-                section={psfSection}
-                data={psfCreatedData}
-                status={req.status}
-                userRole={currentUser?.role}
-                readOnly={psfSectionReadOnly}
-                onChange={handlePsfChange}
-              />
-            )}
-          </div>
+          {/* Dynamic Form Sections from Effective Schema */}
+          <DynamicFormRenderer
+            schema={effectiveSchema}
+            requesterData={requesterData}
+            psfCreatedData={psfCreatedData}
+            onRequesterChange={handleRequesterChange}
+            onPsfChange={handlePsfChange}
+            autofillMeta={autofillMeta}
+            onAutofillApply={handleAutofillApply}
+            status={req.status}
+            userRole={currentUser?.role}
+            isNewRequest={false}
+          />
         </div>
 
         {/* Right Column (1/3): Action Center & Audit Timeline */}

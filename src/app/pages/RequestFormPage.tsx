@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
-import { RequesterInfoSection } from "../components/requests/RequesterInfoSection";
-import { PSFCreatedSection } from "../components/requests/PSFCreatedSection";
+import { DynamicFormRenderer } from "../components/requests/DynamicFormRenderer";
 import { WorkflowStepper } from "../components/requests/WorkflowStepper";
 import { StatusBadge } from "../components/requests/StatusBadge";
 import { AutofillMeta } from "../mock/mockRequests";
@@ -34,13 +33,6 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   const [autofillMeta, setAutofillMeta] = useState<AutofillMeta[]>([]);
   const [saved, setSaved] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
-
-  const reqSection = activeSchema.sections.find(
-    (s) => s.sectionKey === "requester_information"
-  );
-  const psfSection = activeSchema.sections.find(
-    (s) => s.sectionKey === "psf_created_information" || s.sectionKey === "psf_created_section"
-  );
 
   const handleChange = (key: string, value: string, autofillEdited = false) => {
     setData((d) => ({ ...d, [key]: value }));
@@ -216,61 +208,19 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
             </div>
           </div>
 
-          {/* Section 1: Requester Information */}
-          <div className="glass-panel p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  1. Requester Information & Specifications
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Fill in test specifications and recipe requirements. Enter reference PSF to trigger smart auto-fill.
-                </p>
-              </div>
-              <span className="text-[11px] bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-200 dark:border-emerald-800">
-                Active Editable
-              </span>
-            </div>
-
-            {reqSection && (
-              <RequesterInfoSection
-                section={reqSection}
-                data={data}
-                readOnly={false}
-                autofillMeta={autofillMeta}
-                onChange={handleChange}
-                onAutofillApply={handleAutofillApply}
-              />
-            )}
-          </div>
-
-          {/* Section 2: PSF Created Output Section (Placeholder in New Request) */}
-          <div className="glass-panel p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">
-                  2. PSF Setup Output & Configuration
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Assigned Setup File Owner (GNTC/MFG) will generate parameters upon submission.
-                </p>
-              </div>
-              <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
-                Setup Owner Stage
-              </span>
-            </div>
-
-            {psfSection && (
-              <PSFCreatedSection
-                section={psfSection}
-                data={{}}
-                status="DRAFT"
-                userRole="requester"
-                readOnly={true}
-                onChange={() => {}}
-              />
-            )}
-          </div>
+          {/* Dynamic Form Sections */}
+          <DynamicFormRenderer
+            schema={activeSchema}
+            requesterData={data}
+            psfCreatedData={{}}
+            onRequesterChange={handleChange}
+            onPsfChange={() => {}}
+            autofillMeta={autofillMeta}
+            onAutofillApply={handleAutofillApply}
+            status="DRAFT"
+            userRole={currentUser?.role || "requester"}
+            isNewRequest={true}
+          />
         </div>
 
         {/* Right Column (1/3): Action Center & Guidelines */}
