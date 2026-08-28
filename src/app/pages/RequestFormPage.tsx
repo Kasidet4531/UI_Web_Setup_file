@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useApp } from "../context/AppContext";
 import { RequesterInfoSection } from "../components/requests/RequesterInfoSection";
+import { PSFCreatedSection } from "../components/requests/PSFCreatedSection";
+import { WorkflowStepper } from "../components/requests/WorkflowStepper";
+import { StatusBadge } from "../components/requests/StatusBadge";
 import { AutofillMeta } from "../mock/mockRequests";
-import { ACTIVE_SCHEMA } from "../mock/mockFormSchema";
 import {
   ArrowLeft,
   Send,
@@ -11,6 +13,11 @@ import {
   FilePlus,
   Layers,
   Sparkles,
+  User,
+  Calendar,
+  Clock,
+  Info,
+  ShieldAlert,
 } from "lucide-react";
 
 interface RequestFormPageProps {
@@ -18,7 +25,7 @@ interface RequestFormPageProps {
 }
 
 export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
-  const { createRequest, updateRequest, changeStatus, currentUser, addAuditLog } = useApp();
+  const { createRequest, updateRequest, changeStatus, currentUser, activeSchema } = useApp();
   const [data, setData] = useState<Record<string, string>>({
     request_date: new Date().toISOString().split("T")[0],
     product_type: "New Product",
@@ -28,8 +35,11 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   const [saved, setSaved] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const reqSection = ACTIVE_SCHEMA.sections.find(
+  const reqSection = activeSchema.sections.find(
     (s) => s.sectionKey === "requester_information"
+  );
+  const psfSection = activeSchema.sections.find(
+    (s) => s.sectionKey === "psf_created_information" || s.sectionKey === "psf_created_section"
   );
 
   const handleChange = (key: string, value: string, autofillEdited = false) => {
@@ -57,6 +67,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   const ensureCreated = () => {
     if (createdId) return createdId;
     const req = createRequest({
+      formVersion: activeSchema.version,
       requesterData: data,
       productType: data.product_type ?? "New Product",
       priority: (data.priority as any) ?? "Medium",
@@ -72,6 +83,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   const handleSaveDraft = () => {
     const id = ensureCreated();
     updateRequest(id, {
+      formVersion: activeSchema.version,
       requesterData: data,
       productType: data.product_type ?? "New Product",
       priority: (data.priority as any) ?? "Medium",
@@ -86,6 +98,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
   const handleSubmit = () => {
     const id = ensureCreated();
     updateRequest(id, {
+      formVersion: activeSchema.version,
       requesterData: data,
       productType: data.product_type ?? "New Product",
       priority: (data.priority as any) ?? "Medium",
@@ -99,7 +112,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
 
   return (
     <div className="space-y-6 w-full">
-      {/* Header with Navigation & Actions */}
+      {/* Top Navigation Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
         <div className="flex items-center gap-3">
           <button
@@ -115,19 +128,25 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
               <FilePlus size={16} />
             </div>
             <div>
-              <h1 className="text-base font-bold text-foreground leading-tight">
-                Create New PSF Request
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-foreground leading-tight">
+                  Create New PSF Request
+                </h1>
+                <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded font-mono border border-border">
+                  v{activeSchema.version}
+                </span>
+              </div>
               <div className="text-[11px] text-muted-foreground">
-                Active Form Schema v{ACTIVE_SCHEMA.version}
+                Follows 2-stage lifecycle: Requester Submission → Setup Owner Engineering
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Top Action Buttons */}
         <div className="flex items-center gap-2.5">
           <button
+            type="button"
             onClick={handleSaveDraft}
             className="btn-secondary text-xs py-1.5"
           >
@@ -135,6 +154,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
             <span>{saved ? "Draft Saved!" : "Save Draft"}</span>
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             className="btn-primary text-xs py-1.5 shadow-sm"
           >
@@ -144,49 +164,193 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
         </div>
       </div>
 
-      {/* Main Form Container */}
-      <div className="glass-panel p-6 space-y-6">
-        <div className="border-b border-border pb-4">
-          <h2 className="text-sm font-bold text-foreground">
-            Requester Specification Form
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Fill in required probecard details and recipe specifications. Enter a reference PSF name
-            to trigger automatic auto-fill suggestions.
-          </p>
-        </div>
+      {/* Visual Workflow Stepper (Draft Mode) */}
+      <WorkflowStepper
+        status="DRAFT"
+        submittedAt={null}
+        psfCreatedAt={null}
+        completedAt={null}
+      />
 
-        {reqSection && (
-          <RequesterInfoSection
-            section={reqSection}
-            data={data}
-            readOnly={false}
-            autofillMeta={autofillMeta}
-            onChange={handleChange}
-            onAutofillApply={handleAutofillApply}
-          />
-        )}
+      {/* 2-Column Responsive Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column (2/3): Form Sections */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Live Header Summary Card */}
+          <div className="glass-panel p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-foreground">
+                {data.title || "Untitled PSF Request"}
+              </h2>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="bg-secondary px-2 py-0.5 rounded font-medium border border-border">
+                  {data.product_type || "New Product"}
+                </span>
+                <span className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold border border-blue-200 dark:border-blue-800">
+                  Priority: {data.priority || "Medium"}
+                </span>
+              </div>
+            </div>
 
-        {/* Bottom Form Actions */}
-        <div className="pt-4 border-t border-border flex items-center justify-between flex-wrap gap-3">
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-            <Sparkles size={13} className="text-accent" />
-            <span>Smart Auto-fill is active for historical matching probe cards</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 border-t border-border text-xs">
+              <div>
+                <div className="text-muted-foreground text-[11px]">Probecard</div>
+                <div className="font-semibold text-foreground mt-0.5">
+                  {data.probecard_name || "— (Pending entry)"}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-[11px]">Target Due Date</div>
+                <div className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
+                  <Calendar size={12} className="text-muted-foreground" />
+                  <span>{data.due_date || "Not set"}</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground text-[11px]">Requester</div>
+                <div className="font-semibold text-foreground mt-0.5 flex items-center gap-1">
+                  <User size={12} className="text-muted-foreground" />
+                  <span>{currentUser?.name || "CurrentUser"}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={handleSaveDraft}
-              className="btn-secondary"
-            >
-              <Save size={14} /> Save Draft
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="btn-primary shadow-sm"
-            >
-              <Send size={14} /> Submit Request
-            </button>
+          {/* Section 1: Requester Information */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  1. Requester Information & Specifications
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Fill in test specifications and recipe requirements. Enter reference PSF to trigger smart auto-fill.
+                </p>
+              </div>
+              <span className="text-[11px] bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-semibold border border-emerald-200 dark:border-emerald-800">
+                Active Editable
+              </span>
+            </div>
+
+            {reqSection && (
+              <RequesterInfoSection
+                section={reqSection}
+                data={data}
+                readOnly={false}
+                autofillMeta={autofillMeta}
+                onChange={handleChange}
+                onAutofillApply={handleAutofillApply}
+              />
+            )}
+          </div>
+
+          {/* Section 2: PSF Created Output Section (Placeholder in New Request) */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  2. PSF Setup Output & Configuration
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Assigned Setup File Owner (GNTC/MFG) will generate parameters upon submission.
+                </p>
+              </div>
+              <span className="text-[11px] bg-secondary text-muted-foreground px-2 py-0.5 rounded border border-border">
+                Setup Owner Stage
+              </span>
+            </div>
+
+            {psfSection && (
+              <PSFCreatedSection
+                section={psfSection}
+                data={{}}
+                status="DRAFT"
+                userRole="requester"
+                readOnly={true}
+                onChange={() => {}}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Right Column (1/3): Action Center & Guidelines */}
+        <div className="space-y-6">
+          {/* Action Center Card */}
+          <div className="glass-panel p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Action Center
+              </h3>
+              <span className="text-[11px] text-accent font-medium">Ready to Submit</span>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">Current Lifecycle Status</div>
+                <StatusBadge status="DRAFT" size="md" />
+              </div>
+
+              {/* Assignment Information */}
+              <div className="p-3 bg-secondary/50 rounded-lg border border-border space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Target Role</span>
+                  <span className="font-semibold text-foreground">
+                    {data.request_to || "GNTC / MFG"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Request Date</span>
+                  <span className="font-medium text-foreground">{data.request_date}</span>
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="w-full btn-primary text-xs py-2.5 shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Send size={14} />
+                <span>Submit Request to Setup Owner</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                className="w-full btn-secondary text-xs py-2 flex items-center justify-center gap-1.5"
+              >
+                <Save size={14} />
+                <span>{saved ? "Draft Saved Successfully!" : "Save Draft for Later"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Submission Guidelines Card */}
+          <div className="glass-panel p-5 space-y-3 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-foreground pb-2 border-b border-border">
+              <Sparkles size={14} className="text-accent" />
+              <span>Smart Assistance</span>
+            </div>
+            <ul className="space-y-2 text-muted-foreground text-[11px] leading-relaxed">
+              <li className="flex items-start gap-1.5">
+                <span className="text-accent font-bold">•</span>
+                <span>
+                  Entering an existing <strong>Reference PSF Name</strong> triggers auto-fill for Product, Wafer FAB, and Probecard.
+                </span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-accent font-bold">•</span>
+                <span>
+                  Once submitted, the assigned setup owner will receive notification and start engineering verification.
+                </span>
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span className="text-accent font-bold">•</span>
+                <span>
+                  The PSF Created section unlocks automatically for download once marked as <strong>PSF Created</strong>.
+                </span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
