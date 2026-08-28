@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useApp } from "../../context/AppContext";
+import { FileUpload } from "../../components/ui/FileUpload";
 import {
   ACTIVE_SCHEMA,
   FormSchema,
@@ -644,13 +645,27 @@ export function FormConfigPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {section.fields.map((field) => (
-                  <div key={field.fieldKey} className="space-y-1.5">
+                  <div
+                    key={field.fieldKey}
+                    className={`space-y-1.5 ${
+                      field.type === "file" || field.type === "textarea" ? "col-span-full" : ""
+                    }`}
+                  >
                     <label className="text-xs font-semibold text-foreground flex items-center gap-1">
                       <span>{field.label}</span>
                       {field.required && <span className="text-rose-500">*</span>}
                     </label>
 
-                    {field.type === "select" ? (
+                    {field.type === "file" ? (
+                      <FileUpload
+                        label={field.label}
+                        hint={field.placeholder || "Drag and drop recipe or test files"}
+                        value=""
+                        readOnly={false}
+                        required={field.required}
+                        onChange={() => {}}
+                      />
+                    ) : field.type === "select" ? (
                       <select className="input-base text-xs">
                         <option value="">{field.placeholder || "Select option..."}</option>
                         {field.options?.map((opt) => (
@@ -775,6 +790,7 @@ export function FormConfigPage() {
                     <option value="radio">Radio Buttons</option>
                     <option value="date">Date Picker</option>
                     <option value="textarea">Textarea (Multi-line)</option>
+                    <option value="file">File Attachment (Drag & Drop Upload)</option>
                   </select>
                 </div>
 
