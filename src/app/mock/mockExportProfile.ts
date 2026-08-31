@@ -6,6 +6,14 @@ export interface ExportColumn {
   canonical: boolean;
 }
 
+export interface ExportProfile {
+  id: string;
+  name: string;
+  description?: string;
+  isDefault: boolean;
+  columns: ExportColumn[];
+}
+
 export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
   { key: "request_no", label: "Request No.", source: "system.request_id", enabled: true, canonical: false },
   { key: "product_type", label: "Product Type", source: "system.product_type", enabled: true, canonical: false },
@@ -21,4 +29,26 @@ export const DEFAULT_EXPORT_COLUMNS: ExportColumn[] = [
   { key: "requester", label: "Requester", source: "system.requester", enabled: true, canonical: false },
   { key: "setup_owner", label: "Setup Owner", source: "system.setup_owner", enabled: true, canonical: false },
   { key: "setup_owner_role", label: "Setup Owner Dept.", source: "system.setup_owner_role", enabled: true, canonical: false },
+];
+
+const OPERATIONS_COLUMNS = DEFAULT_EXPORT_COLUMNS.map((column) => ({
+  ...column,
+  enabled: !["setup_owner_role", "reference_psf_name"].includes(column.key),
+}));
+
+export const DEFAULT_EXPORT_PROFILES: ExportProfile[] = [
+  {
+    id: "standard",
+    name: "Standard export",
+    description: "The complete request view used by most teams.",
+    isDefault: true,
+    columns: DEFAULT_EXPORT_COLUMNS.map((column) => ({ ...column })),
+  },
+  {
+    id: "operations",
+    name: "Operations handoff",
+    description: "A focused view for daily setup and ownership handoffs.",
+    isDefault: false,
+    columns: OPERATIONS_COLUMNS,
+  },
 ];

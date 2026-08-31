@@ -5,7 +5,12 @@ import { MOCK_AUDIT_LOGS, AuditLog } from "../mock/mockAuditLogs";
 import { MOCK_USER_LOGS, UserLog, UserActionType } from "../mock/mockUserLogs";
 import { ACTIVE_SCHEMA, ALL_SCHEMAS, FormSchema } from "../mock/mockFormSchema";
 import { DEFAULT_STATUSES, DEFAULT_TRANSITIONS, StatusDef, TransitionRule } from "../mock/mockStatuses";
-import { DEFAULT_EXPORT_COLUMNS, ExportColumn } from "../mock/mockExportProfile";
+import {
+  DEFAULT_EXPORT_COLUMNS,
+  DEFAULT_EXPORT_PROFILES,
+  ExportColumn,
+  ExportProfile,
+} from "../mock/mockExportProfile";
 
 type RequestStatus = string;
 
@@ -50,6 +55,8 @@ interface AppContextValue {
   exportColumns: ExportColumn[];
   updateExportColumns: (cols: ExportColumn[]) => void;
   resetExportColumns: () => void;
+  exportProfiles: ExportProfile[];
+  updateExportProfiles: (profiles: ExportProfile[]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -64,6 +71,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [statuses, setStatuses] = useState<StatusDef[]>(DEFAULT_STATUSES);
   const [transitions, setTransitions] = useState<TransitionRule[]>(DEFAULT_TRANSITIONS);
   const [exportColumns, setExportColumns] = useState<ExportColumn[]>(DEFAULT_EXPORT_COLUMNS);
+  const [exportProfiles, setExportProfiles] = useState<ExportProfile[]>(DEFAULT_EXPORT_PROFILES);
 
   const updateExportColumns = useCallback((cols: ExportColumn[]) => {
     setExportColumns(cols);
@@ -71,6 +79,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const resetExportColumns = useCallback(() => {
     setExportColumns(DEFAULT_EXPORT_COLUMNS);
+  }, []);
+
+  const updateExportProfiles = useCallback((profiles: ExportProfile[]) => {
+    setExportProfiles(profiles);
+    const defaultProfile = profiles.find((profile) => profile.isDefault);
+    if (defaultProfile) setExportColumns(defaultProfile.columns);
   }, []);
 
   const login = useCallback((username: string, password: string): boolean => {
@@ -342,6 +356,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         exportColumns,
         updateExportColumns,
         resetExportColumns,
+        exportProfiles,
+        updateExportProfiles,
       }}
     >
       {children}
