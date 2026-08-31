@@ -1,10 +1,10 @@
 import React from "react";
-import { Users, Settings, GitBranch, Sparkles, FileDown, Shield } from "lucide-react";
+import { Users, Settings, ListChecks, Sparkles, FileDown, Shield } from "lucide-react";
 
 const ADMIN_TABS = [
   { label: "Users & Roles", path: "/admin/users", icon: <Users size={15} /> },
   { label: "Form Schema", path: "/admin/form-config", icon: <Settings size={15} /> },
-  { label: "Workflow Matrix", path: "/admin/workflow", icon: <GitBranch size={15} /> },
+  { label: "Status Management", path: "/admin/workflow", icon: <ListChecks size={15} /> },
   { label: "Auto-fill Rules", path: "/admin/autofill", icon: <Sparkles size={15} /> },
   { label: "Export Profiles", path: "/admin/export-profile", icon: <FileDown size={15} /> },
 ];

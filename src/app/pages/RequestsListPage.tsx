@@ -249,12 +249,14 @@ export function RequestsListPage({ onNavigate }: RequestsListPageProps) {
                   className="input-base text-xs h-11 min-w-[110px] cursor-pointer shadow-2xs rounded-lg"
                 >
                   <option value="">All Fabs</option>
-                  <option value="FAB-A">FAB-A</option>
-                  <option value="FAB-B">FAB-B</option>
-                  <option value="FAB-C">FAB-C</option>
-                  <option value="FAB-TSMC1">FAB-TSMC1</option>
-                  <option value="FAB-SS1">FAB-SS1</option>
                   <option value="FAB-ATMC">FAB-ATMC</option>
+                  <option value="FAB-OAK">FAB-OAK</option>
+                  <option value="FAB-SSMC">FAB-SSMC</option>
+                  <option value="FAB-SS1">FAB-SS1</option>
+                  <option value="FAB-TSMC-12">FAB-TSMC-12</option>
+                  <option value="FAB-TSMC-16">FAB-TSMC-16</option>
+                  <option value="FAB-GF-22">FAB-GF-22</option>
+                  <option value="FAB-UMC-8">FAB-UMC-8</option>
                 </select>
               </div>
 

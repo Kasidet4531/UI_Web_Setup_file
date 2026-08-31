@@ -236,7 +236,7 @@ export function RequestFormPage({ onNavigate }: RequestFormPageProps) {
 
             <div className="space-y-3">
               <div>
-                <div className="text-[11px] text-muted-foreground mb-1">Current Lifecycle Status</div>
+                <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">Current Status</div>
                 <StatusBadge status="DRAFT" size="md" />
               </div>
 

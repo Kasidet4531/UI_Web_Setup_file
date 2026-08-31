@@ -67,7 +67,7 @@ export function AppHeader({
       const items = [{ label: "Admin Console", path: "/admin" }];
       if (segments[1] === "users") items.push({ label: "Users & Roles", path: "/admin/users" });
       if (segments[1] === "form-config") items.push({ label: "Form Configuration", path: "/admin/form-config" });
-      if (segments[1] === "workflow") items.push({ label: "Workflow Matrix", path: "/admin/workflow" });
+      if (segments[1] === "workflow") items.push({ label: "Status Management", path: "/admin/workflow" });
       if (segments[1] === "autofill") items.push({ label: "Auto-fill Rules", path: "/admin/autofill" });
       if (segments[1] === "export-profile") items.push({ label: "Export Profiles", path: "/admin/export-profile" });
       return items;

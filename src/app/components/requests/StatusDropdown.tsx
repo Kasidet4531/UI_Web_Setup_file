@@ -34,15 +34,35 @@ export function StatusDropdown({ requestId, currentStatus, onChanged }: StatusDr
     onChanged?.();
   };
 
+  const currentDef = allStatuses.find((s) => s.key === currentStatus);
+  const bg = currentDef?.bg ?? "#f1f5f9";
+  const color = currentDef?.color ?? "#475569";
+  const label = currentDef?.label ?? currentStatus.replace(/_/g, " ");
+
   return (
     <>
       <div className="relative inline-block">
         <button
+          type="button"
           onClick={() => setOpen((o) => !o)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-card hover:bg-secondary text-foreground border border-border rounded-lg text-xs font-medium transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-2xs hover:brightness-95 active:scale-95 cursor-pointer"
+          style={{
+            backgroundColor: bg,
+            color: color,
+            borderColor: `${color}45`,
+          }}
+          title="Click to change status"
         >
-          <StatusBadge status={currentStatus} size="sm" />
-          <ChevronDown size={14} className="text-muted-foreground" />
+          <span
+            className="w-2 h-2 rounded-full shrink-0 animate-pulse"
+            style={{ backgroundColor: color }}
+          />
+          <span>{label}</span>
+          <ChevronDown
+            size={13}
+            style={{ color: color }}
+            className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </button>
 
         {open && (
@@ -51,25 +71,26 @@ export function StatusDropdown({ requestId, currentStatus, onChanged }: StatusDr
               className="fixed inset-0 z-40"
               onClick={() => setOpen(false)}
             />
-            <div className="absolute top-full mt-1.5 left-0 glass-panel p-1.5 z-50 min-w-[200px] shadow-xl animate-in fade-in zoom-in-95">
-              <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border mb-1">
-                Change Status
+            <div className="absolute top-full mt-2 left-0 glass-panel bg-card p-1.5 z-50 min-w-[210px] shadow-2xl rounded-xl border border-border animate-in fade-in zoom-in-95">
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border mb-1">
+                Select New Status
               </div>
-              <div className="space-y-0.5 max-h-56 overflow-y-auto">
+              <div className="space-y-0.5 max-h-60 overflow-y-auto">
                 {allStatuses.map((s) => {
                   const isSelected = s.key === currentStatus;
                   return (
                     <button
                       key={s.key}
+                      type="button"
                       onClick={() => handleSelect(s.key)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left transition-colors text-xs ${
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors text-xs ${
                         isSelected
-                          ? "bg-secondary font-semibold"
-                          : "hover:bg-secondary/70 text-foreground cursor-pointer"
+                          ? "bg-secondary/90 font-semibold"
+                          : "hover:bg-secondary/60 text-foreground cursor-pointer"
                       }`}
                     >
                       <StatusBadge status={s.key} size="sm" />
-                      {isSelected && <CheckCircle2 size={13} className="text-accent ml-2" />}
+                      {isSelected && <CheckCircle2 size={14} className="text-accent ml-2 shrink-0" />}
                     </button>
                   );
                 })}

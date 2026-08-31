@@ -3,15 +3,46 @@ import { useApp } from "../../context/AppContext";
 export function StatusBadge({
   status,
   size = "md",
+  customLabel,
+  customBg,
+  customColor,
 }: {
-  status: string;
+  status?: string;
   size?: "sm" | "md";
+  customLabel?: string;
+  customBg?: string;
+  customColor?: string;
 }) {
   const { statuses } = useApp();
-  const def = statuses.find((s) => s.key === status);
+  const def = status ? statuses.find((s) => s.key === status) : undefined;
 
-  // Modern Semantic status styles with dark-mode safe colors
-  const getStatusStyles = (key: string) => {
+  const label = customLabel ?? def?.label ?? status?.replace(/_/g, " ") ?? "Status";
+  const bg = customBg ?? def?.bg;
+  const color = customColor ?? def?.color;
+
+  if (bg && color) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full font-semibold border transition-all shadow-2xs ${
+          size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs"
+        }`}
+        style={{
+          backgroundColor: bg,
+          color: color,
+          borderColor: `${color}40`,
+        }}
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: color }}
+        />
+        <span>{label}</span>
+      </span>
+    );
+  }
+
+  // Modern Semantic status styles with dark-mode safe colors as fallback
+  const getStatusStyles = (key?: string) => {
     switch (key) {
       case "DRAFT":
         return {
@@ -80,7 +111,6 @@ export function StatusBadge({
   };
 
   const style = getStatusStyles(status);
-  const label = def?.label ?? status.replace(/_/g, " ");
 
   return (
     <span
@@ -91,7 +121,7 @@ export function StatusBadge({
       }`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-      <span className="capitalize">{label}</span>
+      <span>{label}</span>
     </span>
   );
 }

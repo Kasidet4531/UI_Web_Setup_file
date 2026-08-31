@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
   Users,
   Sliders,
-  GitBranch,
+  ListChecks,
   Wand2,
   Download,
 } from "lucide-react";
@@ -158,8 +158,8 @@ export function NavSidebar({ currentPath, onNavigate, role }: NavSidebarProps) {
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-white"
                 }`}
               >
-                <GitBranch size={16} />
-                <span>Workflow Transitions</span>
+                <ListChecks size={16} />
+                <span>Status Management</span>
               </button>
 
               <button

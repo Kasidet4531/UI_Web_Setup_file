@@ -24,9 +24,12 @@ const DEFAULT_RULES: AutofillRule[] = [
 ];
 
 const CANONICAL_FIELDS = [
-  "product_type", "title", "reference_psf_name", "request_for",
+  "product_type", "title", "request_for", "request_to", "reference_psf_name",
   "priority", "nc_12", "product", "wafer_fab", "probecard_name",
-  "description", "psf_setup_file_name", "job_file_name", "template", "layout",
+  "machine_type", "description",
+  "first_die_ref", "probe_coordinate_quadrant", "wafer_id_format",
+  "mirror_die_available", "prepare_fpc", "psf_setup_file_name",
+  "job_file_name", "template", "layout",
 ];
 
 export function AutofillPage() {

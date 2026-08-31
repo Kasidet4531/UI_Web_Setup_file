@@ -340,13 +340,12 @@ export function RequestDetailPage({ requestId, onNavigate }: RequestDetailPagePr
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Action Center
               </h3>
-              <span className="text-[11px] text-accent font-medium">Workflow Engine</span>
             </div>
 
             <div className="space-y-3">
               <div>
-                <div className="text-[11px] text-muted-foreground mb-1">Current Lifecycle Status</div>
-                <div className="flex items-center justify-between">
+                <div className="text-[11px] text-muted-foreground mb-1.5 font-medium">Current Status</div>
+                <div className="flex items-center">
                   <StatusDropdown
                     requestId={req.id}
                     currentStatus={req.status}
